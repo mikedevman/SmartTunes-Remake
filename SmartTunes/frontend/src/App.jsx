@@ -4,6 +4,7 @@ import ScrollToTop from './components/ScrollToTop';
 import './styles/globals.css';
 import { IndexPage } from './pages/IndexPage';
 import { ScoresPage } from './pages/ScoresPage';
+import { ScorePlayerPage } from './pages/ScorePlayerPage';
 import { AuthPage } from './pages/AuthPage';
 import { PlayerProvider, usePlayer } from './components/PlayerContext';
 import { PlayerControlBar } from './components/Player';
@@ -42,6 +43,7 @@ const App = () => {
           <Route path="/" element={<SkipAuth />} />
           <Route path="/home" element={<IndexPage />} />
           <Route path="/scores" element={<ScoresPage />} />
+          <Route path="/scores/:id" element={<ScorePlayerPage />} />
           <Route path="/auth" element={<AuthPage />} />
         </Routes>
         <GlobalPlayer />
