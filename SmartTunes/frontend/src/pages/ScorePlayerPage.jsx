@@ -18,14 +18,20 @@ export const ScorePlayerPage = () => {
   const [isCursorRendering, setIsCursorRendering] = useState(false);
   const sheetReadyRef = useRef(null);
 
+  const autoPlayedIdRef = useRef(null);
+
   // Auto-play the sheet when page loads or ID changes
   useEffect(() => {
-    if (sheet && currentTrack?.id !== sheet.id) {
-      play(sheet, () => new Promise((resolve) => {
-        sheetReadyRef.current = resolve;
-      }));
+    if (sheet && autoPlayedIdRef.current !== sheet.id) {
+      autoPlayedIdRef.current = sheet.id;
+      
+      if (currentTrack?.id !== sheet.id || !isPlaying) {
+        play(sheet, () => new Promise((resolve) => {
+          sheetReadyRef.current = resolve;
+        }));
+      }
     }
-  }, [sheet, currentTrack, play]);
+  }, [sheet, currentTrack, isPlaying, play]);
 
   // ── State Checker on console ────────────────────────────────────────────────
   useEffect(() => {

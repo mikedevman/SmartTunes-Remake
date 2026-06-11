@@ -1,391 +1,584 @@
-import React from 'react';
-import { Button } from '../components/Button';
-import { Icon } from '../components/Icon';
-import { Image } from '../components/Image';
-import { Link } from '../components/Link';
+import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Text } from '../components/Text';
+import {
+  Play, Pause, SkipBack, SkipForward, Heart, Shuffle,
+  ChevronLeft, ChevronRight, ArrowRight, Check, Star,
+  Headphones, Music, Zap, Shield, Loader2, X,
+} from 'lucide-react';
+import { Navbar } from '../components/Navbar';
+import { Footer } from '../components/Footer';
+import { useTopSongs, useGenreSearch } from '../hooks/useItunesData';
+import { usePlayer } from '../components/PlayerContext';
+import { GLOW_COLORS, FALLBACK_COVERS, PLAYLIST_META, FEATURES, TESTIMONIALS } from '../data/mockData';
 
-export const IndexPage = ({ className, children, variant, contentKey, ...props }) => {
-  const [currentSongIndex, setCurrentSongIndex] = React.useState(0);
+// ─── Small components ────────────────────────────────────────────────────────
 
-  const carouselSongs = [
-    {
-      title: "Midnight City",
-      artist: "M83",
-      album: "Hurry Up, We're Dreaming",
-      cover: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-      title: "Starboy",
-      artist: "The Weeknd",
-      album: "Starboy",
-      cover: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-      title: "Levitating",
-      artist: "Dua Lipa",
-      album: "Future Nostalgia",
-      cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=800&q=80"
-    }
-  ];
+const Tag = ({ children }) => (
+  <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-black/40 text-white/80 border border-white/10 backdrop-blur-sm">
+    {children}
+  </span>
+);
 
-  const nextSong = () => setCurrentSongIndex((prev) => (prev + 1) % carouselSongs.length);
-  const prevSong = () => setCurrentSongIndex((prev) => (prev - 1 + carouselSongs.length) % carouselSongs.length);
+const SkeletonBox = ({ className }) => (
+  <div className={`bg-white/5 animate-pulse rounded-2xl ${className}`} />
+);
+
+// ─── Playlist card ───────────────────────────────────────────────────────────
+
+const PlaylistCard = ({ playlist, coverUrl, tracks, loading, onClick }) => {
+  const { play, playQueue } = usePlayer();
 
   return (
-    <div className="bg-background text-textMain font-sans antialiased selection:bg-primary selection:text-black">
-      <>
-        {/* Navbar */}
-        <header>
-          <nav className="fixed w-full z-50 top-0 transition-all duration-300 bg-black/80 backdrop-blur-md border-b border-white/5">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center justify-between h-20">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-black fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></Icon>
-                  </div>
-                  <Text variant="bold" className="font-display font-bold text-2xl tracking-tight"> SmartTunes </Text>
-                </div>
-                <div className="hidden md:flex items-center gap-8 text-sm font-medium text-textMuted">
-                  <RouterLink className="hover:text-white transition-colors" to="/"> Home </RouterLink>
-                  <Link className="hover:text-white transition-colors" href="#discover"> Discover </Link>
-                  <Link className="hover:text-white transition-colors" href="#playlists"> Playlists </Link>
-                  <RouterLink className="hover:text-white transition-colors" to="/scores"> Scores </RouterLink>
-                  <Link className="hover:text-white transition-colors" href="#premium"> Games </Link>
-                </div>
-                <div className="flex items-center gap-3 md:gap-4">
-                  <Button variant="primary" className="md:hidden p-2 rounded-full text-textMuted hover:text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-primary" id="mobile-menu-toggle"><Icon className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></Icon></Button>
-                  <RouterLink to="/auth">
-                    <Button variant="primary" className="hidden md:block text-sm font-bold text-white hover:text-primary transition-colors"> Log In </Button>
-                  </RouterLink>
-                  <RouterLink to="/auth">
-                    <Button variant="primary" contentKey="cta_23" className="bg-white text-black px-4 py-2 md:px-6 md:py-2.5 rounded-full text-sm font-bold hover:bg-primary hover:scale-105 transition-all duration-200 hidden md:block"> Sign Up </Button>
-                  </RouterLink>
-                </div>
-              </div>
-            </div>
-          </nav>
-        </header>
-        {/* Hero Section */}
-        <section id="hero" className="relative min-h-screen flex items-center pt-20 overflow-hidden">
-          {/* Background Glows */}
-          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] -z-10 animate-pulse-slow"></div>
-          <div style={{ animationDelay: "2s" }} className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-accent/20 rounded-full blur-[120px] -z-10 animate-pulse-slow"></div>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
-              <h1 className="font-display text-6xl md:text-7xl font-bold leading-[1.1] tracking-tight">
-                Feel the
-                <br />
-                <Text className="text-gradient"> Rhythm </Text>
-              </h1>
-              <p className="text-xl text-textMuted max-w-lg leading-relaxed">
-                Stream over 100 million songs in high-fidelity audio. Discover new favorites with AI-powered curation tailored just for you.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button variant="primary" contentKey="cta_25" className="bg-primary text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-primaryHover hover:scale-105 transition-all shadow-[0_0_20px_rgba(29,185,84,0.3)] flex items-center justify-center gap-2">
-                  Start Listening Free
-                  <Icon className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                    <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                  </Icon>
-                </Button>
-              </div>
-              <div className="flex items-center gap-4 pt-4">
-                <div className="flex -space-x-3">
-                  <Image className="w-10 h-10 rounded-full border-2 border-black" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=64&h=64" alt="User" />
-                  <Image className="w-10 h-10 rounded-full border-2 border-black" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=64&h=64" alt="User" />
-                  <Image className="w-10 h-10 rounded-full border-2 border-black" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64" alt="User" />
-                </div>
-                <p className="text-sm text-textMuted">
-                  <Text variant="bold" className="text-white font-bold"> 10M+ </Text>
-                  active listeners
-                </p>
-              </div>
-            </div>
-            {/* Audio Player Preview */}
-            <div className="relative animate-float">
-              {/* Decorative Elements */}
-              <div className="absolute -top-10 -right-10 w-24 h-24 bg-gradient-to-br from-primary to-blue-500 rounded-full blur-xl opacity-50"></div>
-
-              <div className="flex items-center gap-3 mb-5">
-  <span className="flex-1 h-px bg-white/30"></span>
-  <p className="text-sm font-semibold uppercase tracking-widest text-white/50 px-2">
-    Check out our recommendations
-  </p>
-  <span className="flex-1 h-px bg-white/30"></span>
-</div>
-
-              {/* Main Player Card */}
-              <div className="glass-panel rounded-3xl p-6 relative z-10 shadow-2xl min-w-[320px]">
-                <div className="relative group overflow-hidden rounded-2xl mb-6">
-                  <div className="aspect-square flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentSongIndex * 100}%)` }}>
-                    {carouselSongs.map((song, i) => (
-                      <div key={i} className="min-w-full h-full overflow-hidden">
-                        <Image
-                          variant="cover"
-                          className={`w-full h-full object-cover transition-transform duration-700 ${i === currentSongIndex ? 'group-hover:scale-110' : ''}`}
-                          src={song.cover}
-                          alt={song.title}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Navigation Arrows */}
-                  <div className="absolute inset-0 flex items-center justify-between px-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={prevSong} className="p-2 rounded-full bg-black/50 text-white hover:bg-white/30 transition-all">
-                      <Icon className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></Icon>
-                    </button>
-                    <button onClick={nextSong} className="p-2 rounded-full bg-black/50 text-white hover:bg-white/30 transition-all">
-                      <Icon className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></Icon>
-                    </button>
-                  </div>
-
-                  {/* Indicators */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                    {carouselSongs.map((_, i) => (
-                      <button key={i} onClick={() => setCurrentSongIndex(i)} className={`h-1.5 rounded-full transition-all cursor-pointer ${i === currentSongIndex ? 'w-6 bg-white/60 hover:bg-white' : 'w-1.5 bg-white/30 hover:bg-white/50'}`} />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-end mb-6 min-h-[64px]">
-                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-500" key={currentSongIndex}>
-                    <h3 className="font-display font-bold text-2xl mb-1"> {carouselSongs[currentSongIndex].title} </h3>
-                    <p className="text-textMuted text-lg"> {carouselSongs[currentSongIndex].artist} </p>
-                    <p className="text-textMuted text-sm"> {carouselSongs[currentSongIndex].album} </p>
-                  </div>
-                  <Button variant="primary" className="text-primary hover:text-white transition-colors"><Icon className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></Icon></Button>
-                </div>
-                {/* Progress Bar */}
-                <div className="mb-6 group cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-textMuted font-medium min-w-[36px] text-right font-variant-tabular-nums">1:24</span>
-                    <div
-                      className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden cursor-pointer relative"
-                      onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        // Dummy seek - in real implementation, call onSeek
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.querySelector('.pcb-fill').style.background = '#1db954';
-                        e.currentTarget.querySelector('.pcb-thumb').style.opacity = '1';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.querySelector('.pcb-fill').style.background = '#fff';
-                        e.currentTarget.querySelector('.pcb-thumb').style.opacity = '0';
-                      }}
-                    >
-                      <div
-                        className="pcb-fill h-full w-1/3 bg-primary rounded-full relative transition-colors duration-150"
-                      >
-                        <div
-                          className="pcb-thumb absolute right-[-5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full opacity-0 transition-opacity duration-150"
-                        />
-                      </div>
-                    </div>
-                    <span className="text-xs text-textMuted font-medium min-w-[36px] font-variant-tabular-nums">4:03</span>
-                  </div>
-                </div>
-                {/* Controls */}
-                <div className="flex items-center justify-between">
-                  <Button className="text-textMuted hover:text-white transition-colors"><Icon className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M14.12 15.53c.93-.86 1.48-2.06 1.48-3.38 0-2.65-2.15-4.8-4.8-4.8-2.65 0-4.8 2.15-4.8 4.8 0 2.65 2.15 4.8 4.8 4.8.47 0 .92-.07 1.35-.19l2.3 2.3c-.23.08-.47.14-.72.19-1.1.22-2.25.13-3.3-.26-1.05-.39-1.94-1.08-2.57-1.98-.63-.9-1-1.97-1.06-3.08-.06-1.11.18-2.21.7-3.19.52-.98 1.3-1.78 2.25-2.33.95-.55 2.04-.82 3.14-.79 1.1.03 2.18.36 3.11.96.93.6 1.66 1.46 2.11 2.47l-1.68 1.68c-.28-.63-.73-1.17-1.31-1.54-.58-.37-1.26-.58-1.95-.6-1.38-.04-2.68.75-3.22 2.04-.54 1.29-.13 2.78.99 3.59 1.12.81 2.66.64 3.58-.39l1.48 1.32zM19 13h-2v2h-2v-2h-2v-2h2V9h2v2h2v2z"></path></Icon></Button>
-                  <Button variant="primary" className="text-white hover:text-primary transition-colors"><Icon className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path></Icon></Button>
-                  <Button className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-white/20"><Icon className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></Icon></Button>
-                  <Button variant="primary" className="text-white hover:text-primary transition-colors"><Icon className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></Icon></Button>
-                  <Button className="text-textMuted hover:text-white transition-colors"><Icon className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"></path></Icon></Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-        {/* Curated For You */}
-        <section id="curated_for_you" className="py-24 bg-surface relative">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-end mb-12">
-              <div>
-                <h2 className="font-display text-4xl font-bold mb-2"> Curated For You </h2>
-                <p className="text-textMuted"> Hand-picked playlists based on your vibe. </p>
-              </div>
-              <Link className="text-sm font-bold text-white hover:text-primary transition-colors flex items-center gap-1" href="#"> View All
-                <Icon className="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></Icon></Link>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {/* Card 1 */}
-              <div className="group cursor-pointer">
-                <div className="relative aspect-square rounded-xl overflow-hidden mb-4">
-                  <Image variant="cover" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80" />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                      <Icon className="w-6 h-6 text-black fill-current ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></Icon>
-                    </div>
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg group-hover:text-primary transition-colors"> Deep Focus </h3>
-                <p className="text-sm text-textMuted"> Electronic ambient for work. </p>
-              </div>
-              {/* Card 2 */}
-              <div className="group cursor-pointer">
-                <div className="relative aspect-square rounded-xl overflow-hidden mb-4">
-                  <Image variant="cover" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80" />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                      <Icon className="w-6 h-6 text-black fill-current ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></Icon>
-                    </div>
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg group-hover:text-primary transition-colors"> City Pop </h3>
-                <p className="text-sm text-textMuted"> Japanese 80s funk & soul. </p>
-              </div>
-              {/* Card 3 */}
-              <div className="group cursor-pointer">
-                <div className="relative aspect-square rounded-xl overflow-hidden mb-4">
-                  <Image variant="cover" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80" />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                      <Icon className="w-6 h-6 text-black fill-current ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></Icon>
-                    </div>
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg group-hover:text-primary transition-colors"> Workout Energy </h3>
-                <p className="text-sm text-textMuted"> High BPM hits. </p>
-              </div>
-              {/* Card 4 */}
-              <div className="group cursor-pointer">
-                <div className="relative aspect-square rounded-xl overflow-hidden mb-4">
-                  <Image variant="cover" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80" />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                      <Icon className="w-6 h-6 text-black fill-current ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></Icon>
-                    </div>
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg group-hover:text-primary transition-colors"> Late Night Jazz </h3>
-                <p className="text-sm text-textMuted"> Smooth saxophone vibes. </p>
-              </div>
-            </div>
-          </div>
-        </section>
-        {/* The Weeknd */}
-        <section id="the_weeknd" className="py-24 relative overflow-hidden">
-          <div className="absolute inset-0">
-            <Image variant="cover" className="w-full h-full object-cover opacity-30" src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=2000&q=80" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent"></div>
-          </div>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="max-w-2xl">
-              <div className="text-primary font-bold tracking-widest uppercase mb-4"> Artist Spotlight </div>
-              <h2 className="font-display text-5xl md:text-7xl font-bold mb-6"> The Weeknd </h2>
-              <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-                Experience the new era of pop. Listen to the exclusive release of "After Hours" in spatial audio, only on StreamFlow.
-              </p>
-              <div className="flex gap-4">
-                <Button variant="primary" contentKey="cta_27" className="bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-primary transition-colors flex items-center gap-2"><Icon className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></Icon>
-                  Play Latest Album </Button>
-                <Button contentKey="cta_28" className="px-8 py-3 rounded-full font-bold border border-white/30 hover:bg-white/10 transition-colors"> Follow Artist </Button>
-              </div>
-            </div>
-          </div>
-        </section>
-        {/* Unlock Premium Sound */}
-        <section id="unlock_premium_sound" className="py-24 bg-black relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px]"></div>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="glass-panel rounded-3xl p-12 md:p-20 text-center relative overflow-hidden border-primary/20">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary"></div>
-              <h2 className="font-display text-4xl md:text-5xl font-bold mb-6"> Unlock Premium Sound </h2>
-              <p className="text-xl text-textMuted max-w-2xl mx-auto mb-10">
-                Ad-free listening, offline playback, and high-fidelity audio. Cancel anytime.
-              </p>
-              <div className="flex flex-col md:flex-row justify-center gap-6 mb-12">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Icon className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></Icon>
-                  Ad-free music
-                </div>
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Icon className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></Icon>
-                  Offline playback
-                </div>
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Icon className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></Icon>
-                  Hi-Fi Audio
-                </div>
-              </div>
-              <Button variant="primary" contentKey="cta_29" className="bg-gradient-to-r from-primary to-primaryHover text-black px-10 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-lg shadow-primary/25"> Get 3 Months Free </Button>
-              <p className="mt-4 text-xs text-textMuted"> Individual plan only. $9.99/month after. Terms apply. </p>
-            </div>
-          </div>
-        </section>
-        {/* Footer */}
-        <footer className="bg-surface py-12 border-t border-white/5">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-              <div>
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                    <Icon className="w-3 h-3 text-black fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></Icon>
-                  </div>
-                  <Text variant="bold" className="font-display font-bold text-lg"> StreamFlow </Text>
-                </div>
-                <div className="flex gap-4">
-                  <Link className="text-textMuted hover:text-white" href="#"><Icon className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></Icon></Link>
-                  <Link className="text-textMuted hover:text-white" href="#"><Icon className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></Icon></Link>
-                </div>
-              </div>
-              <div>
-                <h4 className="font-bold mb-4"> Company </h4>
-                <ul className="space-y-2 text-sm text-textMuted">
-                  <li><Link className="hover:text-white" href="#"> About </Link></li>
-                  <li><Link className="hover:text-white" href="#"> Jobs </Link></li>
-                  <li>
-                    <Link className="hover:text-white" href="#"> For the Record </Link>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-bold mb-4"> Communities </h4>
-                <ul className="space-y-2 text-sm text-textMuted">
-                  <li>
-                    <Link className="hover:text-white" href="#"> For Artists </Link>
-                  </li>
-                  <li>
-                    <Link className="hover:text-white" href="#"> Developers </Link>
-                  </li>
-                  <li>
-                    <Link className="hover:text-white" href="#"> Advertising </Link>
-                  </li>
-                  <li>
-                    <Link className="hover:text-white" href="#"> Investors </Link>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-bold mb-4"> Useful Links </h4>
-                <ul className="space-y-2 text-sm text-textMuted">
-                  <li>
-                    <Link className="hover:text-white" href="#"> Support </Link>
-                  </li>
-                  <li>
-                    <Link className="hover:text-white" href="#"> Web Player </Link>
-                  </li>
-                  <li>
-                    <Link className="hover:text-white" href="#"> Free Mobile App </Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            <div className="text-xs text-textMuted pt-8 border-t border-white/5 flex justify-between">
-              <p> © 2025 StreamFlow AB. </p>
-              <div className="flex gap-4">
-                <Link className="hover:text-white" href="#"> Legal </Link>
-                <Link className="hover:text-white" href="#"> Privacy Center </Link>
-                <Link className="hover:text-white" href="#"> Cookies </Link>
-              </div>
-            </div>
-          </div>
-        </footer>
-      </>
+  <div className="group cursor-pointer card-hover" onClick={() => onClick({ ...playlist, coverUrl, tracks })}>
+    <div className="relative aspect-square rounded-2xl overflow-hidden mb-4 shadow-lg shadow-black/40">
+      {loading ? (
+        <SkeletonBox className="w-full h-full rounded-none" />
+      ) : (
+        <img
+          src={coverUrl || playlist.fallback}
+          alt={playlist.title}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          loading="lazy"
+          onError={(e) => { e.currentTarget.src = playlist.fallback; }}
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+      <div className="absolute inset-0 flex items-end justify-between p-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <Tag>{playlist.tag}</Tag>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (tracks && tracks.length > 0) playQueue(tracks, 0);
+          }}
+          className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-xl shadow-primary/40 transform translate-y-3 group-hover:translate-y-0 transition-all duration-300 hover:scale-110 hover:bg-primaryHover"
+          aria-label={`Play ${playlist.title}`}
+        >
+          <Play className="w-5 h-5 text-background fill-current ml-0.5" />
+        </button>
+      </div>
     </div>
+    <h3 className="font-display font-bold text-base group-hover:text-primary transition-colors duration-200 truncate">{playlist.title}</h3>
+    <p className="text-sm text-textMuted mt-0.5">{playlist.description}</p>
+    <p className="text-xs text-textMuted/60 mt-1">{playlist.tracks}</p>
+  </div>
   );
 };
 
+// ─── Trending track row ───────────────────────────────────────────────────────
+
+const TrendingRow = ({ track, rank, queueTracks = [], index = 0 }) => {
+  const { play, playQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer();
+  const isThisTrack = currentTrack?.trackId === track.trackId;
+
+  return (
+  <div
+    className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group"
+    onClick={() => {
+      if (isThisTrack) togglePlayPause();
+      else if (queueTracks.length > 0) playQueue(queueTracks, index);
+      else play(track);
+    }}
+  >
+    <div className="relative w-5 h-5 flex items-center justify-center flex-shrink-0">
+      <span className={`text-sm font-bold text-center transition-opacity ${isThisTrack ? 'opacity-0' : 'text-textMuted group-hover:opacity-0'}`}>{rank}</span>
+      {isThisTrack && isPlaying ? <Pause className="w-4 h-4 text-primary fill-current absolute" /> : <Play className={`w-4 h-4 text-white fill-current absolute transition-opacity ${isThisTrack ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-100'}`} />}
+    </div>
+    <img
+      src={track.artworkUrl100}
+      alt={track.trackName}
+      className="w-10 h-10 rounded-lg object-cover flex-shrink-0 shadow-md"
+      loading="lazy"
+    />
+    <div className="min-w-0 flex-1">
+      <p className={`text-sm font-semibold truncate transition-colors ${isThisTrack ? 'text-primary' : 'group-hover:text-primary'}`}>{track.trackName}</p>
+      <p className="text-xs text-textMuted truncate">{track.artistName}</p>
+    </div>
+    {track.primaryGenreName && (
+      <span className="hidden sm:block text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-textMuted flex-shrink-0">
+        {track.primaryGenreName}
+      </span>
+    )}
+  </div>
+  );
+};
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+export const IndexPage = () => {
+  const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [isPlaying,        setIsPlaying]        = useState(false);
+  const [progress,         setProgress]         = useState(33);
+  const [isLiked,          setIsLiked]          = useState(false);
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+
+  // ── API data ──
+  const { data: topSongs,  loading: topLoading  } = useTopSongs(8);
+  const { data: ambient  } = useGenreSearch('ambient focus instrumental', 20);
+  const { data: cityPop  } = useGenreSearch('city pop japanese 80s funk', 20);
+  const { data: workout  } = useGenreSearch('workout gym energy hits', 20);
+  const { data: jazz     } = useGenreSearch('smooth jazz saxophone night', 20);
+  
+  const playlistDataList = [ambient, cityPop, workout, jazz];
+
+  // ── Derived data ──
+  const carouselSongs = topSongs.length >= 3
+    ? topSongs.slice(0, 3).map((t, i) => ({
+        ...t,
+        title:  t.trackName,
+        artist: t.artistName,
+        album:  t.collectionName,
+        cover:  t.artworkUrl100,
+        color:  GLOW_COLORS[i % GLOW_COLORS.length],
+      }))
+    : [
+        { title: 'Midnight City',  artist: 'M83',       album: "Hurry Up, We're Dreaming", cover: FALLBACK_COVERS[0], color: GLOW_COLORS[0] },
+        { title: 'Starboy',        artist: 'The Weeknd', album: 'Starboy',                   cover: FALLBACK_COVERS[1], color: GLOW_COLORS[1] },
+        { title: 'Levitating',     artist: 'Dua Lipa',  album: 'Future Nostalgia',           cover: FALLBACK_COVERS[2], color: GLOW_COLORS[2] },
+      ];
+
+  const genreCovers = playlistDataList.map(data => data[0]?.artworkUrl100);
+
+  const trendingTracks = topSongs.slice(3, 8); // songs 4-8 for trending strip
+
+  // ── Carousel auto-advance ──
+  useEffect(() => {
+    const id = setInterval(() => setCurrentSongIndex(p => (p + 1) % carouselSongs.length), 5000);
+    return () => clearInterval(id);
+  }, [carouselSongs.length]);
+
+  const nextSong = () => setCurrentSongIndex(p => (p + 1) % carouselSongs.length);
+  const prevSong = () => setCurrentSongIndex(p => (p - 1 + carouselSongs.length) % carouselSongs.length);
+  const currentSong = carouselSongs[currentSongIndex] ?? carouselSongs[0];
+  
+  const { play, playQueue, currentTrack, isPlaying: globalIsPlaying, togglePlayPause, progress: globalProgress, seek } = usePlayer();
+  const isCurrentSongPlaying = currentTrack?.trackId && currentSong?.trackId === currentTrack?.trackId;
+
+  const formatTime = (pct, total = 30) => {
+    const s = Math.round((pct / 100) * total);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="bg-background text-textMain font-sans antialiased min-h-screen">
+      <Navbar />
+
+      {/* ── Hero ────────────────────────────────────────────────────────── */}
+      <section id="hero" className="relative min-h-screen flex items-center pt-20 overflow-hidden" aria-label="Hero section">
+        {/* Dynamic glow that matches current song */}
+        <div
+          className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[140px] -z-10 pointer-events-none transition-colors duration-1000"
+          style={{ backgroundColor: currentSong?.color ?? GLOW_COLORS[0] }}
+        />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-accent/15 rounded-full blur-[120px] -z-10 pointer-events-none animate-pulse-slow" style={{ animationDelay: '2s' }} />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full grid lg:grid-cols-2 gap-16 items-center py-16">
+
+          {/* Left: copy */}
+          <div className="space-y-8 animate-slide-up">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              Now streaming · 100M+ songs
+            </div>
+            <h1 className="font-display text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.05] tracking-tight">
+              Feel the<br />
+              <span className="text-gradient">Rhythm.</span>
+            </h1>
+            <p className="text-xl text-textMuted max-w-lg leading-relaxed">
+              Stream in high-fidelity audio. Read and play interactive sheet music.
+              Discover new favorites — all in one place.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 pt-2">
+              <RouterLink to="/auth" className="btn-primary px-8 py-4 text-lg flex items-center justify-center gap-2 group" id="hero-cta-start">
+                Start Listening Free
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </RouterLink>
+              <RouterLink to="/scores" className="btn-ghost px-8 py-4 text-lg flex items-center justify-center gap-2 text-white" id="hero-cta-scores">
+                <Music className="w-5 h-5 text-primary" />
+                Explore Scores
+              </RouterLink>
+            </div>
+            {/* Social proof */}
+            <div className="flex items-center gap-4 pt-2">
+              <div className="flex -space-x-3">
+                {TESTIMONIALS.map((t, i) => (
+                  <img key={i} src={t.avatar} alt={t.name} className="w-10 h-10 rounded-full border-2 border-background object-cover" />
+                ))}
+              </div>
+              <div>
+                <p className="text-sm text-textMuted"><span className="text-white font-bold">10M+</span> active listeners</p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 text-yellow-400 fill-current" />)}
+                  <span className="text-xs text-textMuted ml-1">4.9/5</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: player card */}
+          <div className="relative animate-float" aria-label="Demo music player">
+            <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-primary to-accent rounded-full blur-2xl opacity-30 pointer-events-none" />
+            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-accent/20 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="flex items-center gap-3 mb-5">
+              <span className="flex-1 h-px bg-white/10" />
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 px-2">
+                {topLoading ? 'Loading chart…' : 'Top charts right now'}
+              </p>
+              <span className="flex-1 h-px bg-white/10" />
+            </div>
+
+            {/* Player card */}
+            <div className="glass-panel rounded-3xl p-6 shadow-2xl shadow-black/60 min-w-[300px] max-w-[400px] mx-auto">
+              {/* Album art */}
+              <div className="relative group rounded-2xl overflow-hidden mb-5 shadow-xl aspect-square">
+                {topLoading ? (
+                  <SkeletonBox className="w-full h-full rounded-none" />
+                ) : (
+                  <div className="flex transition-transform duration-500 ease-in-out h-full" style={{ transform: `translateX(-${currentSongIndex * 100}%)` }}>
+                    {carouselSongs.map((song, i) => (
+                      <div key={i} className="min-w-full h-full">
+                        <img
+                          src={song.cover}
+                          alt={song.title}
+                          className={`w-full h-full object-cover transition-transform duration-700 ${i === currentSongIndex ? 'group-hover:scale-105' : ''}`}
+                          onError={(e) => { e.currentTarget.src = FALLBACK_COVERS[i % FALLBACK_COVERS.length]; }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Arrow controls */}
+                <div className="absolute inset-0 flex items-center justify-between px-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={prevSong} className="p-2 rounded-full bg-black/60 text-white hover:bg-white/20 transition-all backdrop-blur-sm" aria-label="Previous"><ChevronLeft className="w-4 h-4" /></button>
+                  <button onClick={nextSong} className="p-2 rounded-full bg-black/60 text-white hover:bg-white/20 transition-all backdrop-blur-sm" aria-label="Next"><ChevronRight className="w-4 h-4" /></button>
+                </div>
+                {/* Dots */}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                  {carouselSongs.map((_, i) => (
+                    <button key={i} onClick={() => setCurrentSongIndex(i)}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${i === currentSongIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/30 hover:bg-white/50'}`}
+                      aria-label={`Song ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Track info */}
+              <div className="flex justify-between items-start mb-5 min-h-[56px]">
+                <div className="animate-in" key={currentSongIndex}>
+                  {topLoading ? (
+                    <div className="space-y-2">
+                      <div className="h-4 w-32 bg-white/10 rounded animate-pulse" />
+                      <div className="h-3 w-20 bg-white/5 rounded animate-pulse" />
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="font-display font-bold text-xl mb-0.5 truncate max-w-[200px]">{currentSong?.title}</h3>
+                      <p className="text-textMuted text-sm">{currentSong?.artist}</p>
+                      <p className="text-textMuted/60 text-xs truncate max-w-[200px]">{currentSong?.album}</p>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={() => setIsLiked(v => !v)}
+                  className={`p-2 rounded-full transition-all duration-200 ${isLiked ? 'text-accentPink scale-110' : 'text-textMuted hover:text-white hover:scale-110'}`}
+                  aria-label={isLiked ? 'Unlike' : 'Like'}
+                >
+                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                </button>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mb-5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-textMuted tabular-nums min-w-[32px] text-right">{formatTime(isCurrentSongPlaying ? globalProgress : 0, currentSong?.trackTimeMillis ? Math.min(30, currentSong.trackTimeMillis / 1000) : 30)}</span>
+                  <div
+                    className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden cursor-pointer group/bar relative"
+                    onClick={(e) => {
+                      if (!isCurrentSongPlaying) return;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      seek(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)));
+                    }}
+                  >
+                    <div className="h-full bg-primary rounded-full relative transition-all duration-100" style={{ width: `${isCurrentSongPlaying ? globalProgress : 0}%` }}>
+                      <div className="absolute right-[-4px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full opacity-0 group-hover/bar:opacity-100 transition-opacity shadow-md" />
+                    </div>
+                  </div>
+                  <span className="text-xs text-textMuted tabular-nums min-w-[32px]">0:30</span>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center justify-between">
+                <button className="text-textMuted hover:text-white transition-colors p-1" aria-label="Shuffle"><Shuffle className="w-4 h-4" /></button>
+                <button onClick={prevSong} className="text-white hover:text-primary transition-colors p-1" aria-label="Previous"><SkipBack className="w-7 h-7 fill-current" /></button>
+                <button
+                  onClick={() => {
+                    if (isCurrentSongPlaying) togglePlayPause();
+                    else if (currentSong) play(currentSong);
+                  }}
+                  className="w-14 h-14 bg-white text-background rounded-full flex items-center justify-center hover:scale-110 hover:bg-primary transition-all duration-200 shadow-lg shadow-white/10"
+                  aria-label={isCurrentSongPlaying && globalIsPlaying ? 'Pause' : 'Play'}
+                >
+                  {isCurrentSongPlaying && globalIsPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-0.5" />}
+                </button>
+                <button onClick={nextSong} className="text-white hover:text-primary transition-colors p-1" aria-label="Next"><SkipForward className="w-7 h-7 fill-current" /></button>
+                <button className="text-textMuted hover:text-white transition-colors p-1" aria-label="Queue">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z" /></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Scroll hint */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-textMuted/40 animate-bounce pointer-events-none">
+          <span className="text-xs uppercase tracking-widest">Scroll</span>
+          <ChevronRight className="w-4 h-4 rotate-90" />
+        </div>
+      </section>
+
+      {/* ── Trending Now strip ──────────────────────────────────────────── */}
+      {(topLoading || trendingTracks.length > 0) && (
+        <section id="trending" className="py-12 border-b border-white/5" aria-label="Trending now">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <h2 className="font-display font-bold text-xl">Trending Right Now</h2>
+                {topLoading && <Loader2 className="w-4 h-4 text-textMuted animate-spin" />}
+              </div>
+              <RouterLink to="/discover" className="text-sm text-textMuted hover:text-white transition-colors flex items-center gap-1 group">
+                See all <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </RouterLink>
+            </div>
+
+            {topLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 px-4 py-3 rounded-xl">
+                    <div className="w-5 h-5 bg-white/5 rounded animate-pulse" />
+                    <div className="w-10 h-10 bg-white/5 rounded-lg animate-pulse flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-white/5 rounded animate-pulse w-3/4" />
+                      <div className="h-2 bg-white/5 rounded animate-pulse w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
+                {trendingTracks.map((track, i) => (
+                  <TrendingRow key={track.trackId} track={track} rank={i + 4} queueTracks={trendingTracks} index={i} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ── Curated Playlists ─────────────────────────────────────────── */}
+      <section id="playlists" className="py-24 bg-surface relative overflow-hidden" aria-label="Curated playlists">
+        <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{
+          backgroundImage: 'radial-gradient(circle at 25% 50%, #a78bfa 0%, transparent 50%), radial-gradient(circle at 75% 50%, #ec4899 0%, transparent 50%)'
+        }} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="flex justify-between items-end mb-12">
+            <div>
+              <p className="text-primary font-semibold text-xs uppercase tracking-widest mb-2">Handpicked for you</p>
+              <h2 className="font-display text-4xl md:text-5xl font-bold">Curated For You</h2>
+              <p className="text-textMuted mt-2 text-lg">Hand-picked playlists based on your vibe.</p>
+            </div>
+            <RouterLink to="/discover" className="hidden sm:flex items-center gap-1.5 text-sm font-bold text-white hover:text-primary transition-colors group">
+              View All <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </RouterLink>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {PLAYLIST_META.map((playlist, i) => (
+              <PlaylistCard
+                key={playlist.title}
+                playlist={{ ...playlist, fallback: FALLBACK_COVERS[i] }}
+                coverUrl={genreCovers[i]}
+                tracks={playlistDataList[i]}
+                loading={!genreCovers[i]}
+                onClick={setSelectedPlaylist}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Artist Spotlight ─────────────────────────────────────────── */}
+      <section id="spotlight" className="py-24 relative overflow-hidden" aria-label="Artist spotlight">
+        <div className="absolute inset-0">
+          <img src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=2000&q=80" alt="" className="w-full h-full object-cover opacity-25" aria-hidden="true" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="max-w-2xl">
+            <p className="text-primary font-bold tracking-widest uppercase mb-4 text-sm">Artist Spotlight</p>
+            <h2 className="font-display text-5xl md:text-7xl font-bold mb-6 leading-tight">The Weeknd</h2>
+            <p className="text-xl text-gray-300 mb-8 leading-relaxed">
+              Experience the new era of pop. Listen to the exclusive release of &quot;After Hours&quot; in spatial audio — only on SmartTunes.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <button className="btn-primary px-8 py-3 flex items-center gap-2"><Play className="w-5 h-5 fill-current" />Play Latest Album</button>
+              <button className="btn-ghost px-8 py-3 text-white">Follow Artist</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features ──────────────────────────────────────────────────── */}
+      <section id="features" className="py-24 bg-surface" aria-label="Features">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <p className="text-primary font-semibold text-sm uppercase tracking-widest mb-3">Why SmartTunes</p>
+            <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">Everything you need</h2>
+            <p className="text-textMuted text-lg max-w-xl mx-auto">Built for music lovers and musicians alike.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {FEATURES.map(({ icon: Icon, title, description, color, bg }) => (
+              <div key={title} className="glass-panel rounded-2xl p-6 card-hover group border border-white/5 hover:border-white/10">
+                <div className={`w-12 h-12 ${bg} rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200`}>
+                  <Icon className={`w-6 h-6 ${color}`} />
+                </div>
+                <h3 className="font-display font-bold text-lg mb-2">{title}</h3>
+                <p className="text-sm text-textMuted leading-relaxed">{description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ──────────────────────────────────────────────── */}
+      <section id="testimonials" className="py-24 relative overflow-hidden" aria-label="Testimonials">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px]" />
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="text-center mb-16">
+            <p className="text-primary font-semibold text-sm uppercase tracking-widest mb-3">Loved by listeners</p>
+            <h2 className="font-display text-4xl md:text-5xl font-bold">What people say</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {TESTIMONIALS.map((t, i) => (
+              <div key={i} className="glass-panel rounded-2xl p-6 border border-white/5 hover:border-white/10 transition-all duration-300 card-hover">
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(t.rating)].map((_, j) => <Star key={j} className="w-4 h-4 text-yellow-400 fill-current" />)}
+                </div>
+                <p className="text-textMuted text-sm leading-relaxed mb-6 italic">&ldquo;{t.text}&rdquo;</p>
+                <div className="flex items-center gap-3">
+                  <img src={t.avatar} alt={t.name} className="w-10 h-10 rounded-full object-cover border border-white/10" />
+                  <div>
+                    <p className="font-semibold text-sm">{t.name}</p>
+                    <p className="text-xs text-textMuted">{t.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Premium CTA ───────────────────────────────────────────────── */}
+      <section id="premium" className="py-24 bg-black relative overflow-hidden" aria-label="Premium plan">
+        <div className="absolute top-0 right-0 w-[700px] h-[700px] bg-accent/8 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/8 rounded-full blur-[120px] pointer-events-none" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="glass-panel rounded-3xl p-10 md:p-20 text-center relative overflow-hidden border border-white/8 max-w-4xl mx-auto">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider mb-6">
+              <Zap className="w-3 h-3" />Limited Time Offer
+            </div>
+            <h2 className="font-display text-4xl md:text-6xl font-bold mb-5">Unlock Premium Sound</h2>
+            <p className="text-xl text-textMuted max-w-2xl mx-auto mb-10 leading-relaxed">
+              Ad-free listening, offline playback, and high-fidelity audio. Cancel anytime.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-10 mb-12">
+              {['Ad-free music', 'Offline playback', 'Hi-Fi Audio', 'Sheet Music'].map(feat => (
+                <div key={feat} className="flex items-center gap-2 text-sm font-medium">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-primary" strokeWidth={3} />
+                  </div>
+                  {feat}
+                </div>
+              ))}
+            </div>
+            <RouterLink to="/auth" className="inline-flex items-center gap-2 btn-primary px-12 py-4 text-lg" id="premium-cta">
+              Get 3 Months Free <ArrowRight className="w-5 h-5" />
+            </RouterLink>
+            <p className="mt-4 text-xs text-textMuted">Individual plan only. $9.99/month after. Terms apply.</p>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+
+      {/* ── Playlist Modal ──────────────────────────────────────────────── */}
+      {selectedPlaylist && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setSelectedPlaylist(null)}
+        >
+          <div
+            className="bg-[#111113] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="relative p-6 border-b border-white/5 flex flex-col sm:flex-row gap-6 items-start sm:items-end shrink-0 bg-gradient-to-b from-white/5 to-transparent rounded-t-2xl">
+              <button
+                onClick={() => setSelectedPlaylist(null)}
+                className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-textMuted hover:text-white hover:bg-black/60 transition-all"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <img
+                src={selectedPlaylist.coverUrl || selectedPlaylist.fallback}
+                alt={selectedPlaylist.title}
+                className="w-28 h-28 sm:w-36 sm:h-36 rounded-xl object-cover shadow-xl shadow-black/50 flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0 pr-8">
+                <Tag>{selectedPlaylist.tag}</Tag>
+                <h2 className="font-display text-2xl sm:text-3xl font-bold mt-2 mb-1">{selectedPlaylist.title}</h2>
+                <p className="text-textMuted text-sm">{selectedPlaylist.description}</p>
+                <div className="flex items-center gap-4 mt-4">
+                  <button
+                    onClick={() => {
+                      if (selectedPlaylist.tracks?.length > 0) playQueue(selectedPlaylist.tracks, 0);
+                    }}
+                    className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-primaryHover transition-all"
+                    aria-label={`Play ${selectedPlaylist.title}`}
+                  >
+                    <Play className="w-5 h-5 text-background fill-current ml-0.5" />
+                  </button>
+                  <span className="text-xs font-semibold tracking-widest uppercase text-textMuted/60">
+                    {selectedPlaylist.tracks?.length || 0} tracks
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Track list */}
+            <div className="flex-1 overflow-y-auto p-2">
+              {selectedPlaylist.tracks && selectedPlaylist.tracks.length > 0 ? (
+                selectedPlaylist.tracks.map((track, i) => (
+                  <TrendingRow key={track.trackId || i} track={track} rank={i + 1} queueTracks={selectedPlaylist.tracks} index={i} />
+                ))
+              ) : (
+                <div className="p-12 flex flex-col items-center justify-center text-center text-textMuted">
+                  <Loader2 className="w-8 h-8 animate-spin mb-4 text-white/20" />
+                  <p>Loading tracks…</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
