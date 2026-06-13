@@ -16,6 +16,11 @@ import { ArtistRegisterPage } from './pages/ArtistRegisterPage';
 import { ArtistDashboard } from './pages/ArtistDashboard';
 import { UploadSongPage } from './pages/UploadSongPage';
 import { SocialHub } from './pages/SocialHub';
+import { GameHub } from './pages/GameHub';
+import { KaraokeSelection } from './pages/KaraokeSelection';
+import { KaraokeGame } from './pages/KaraokeGame';
+import { PlayAlongSelection } from './pages/PlayAlongSelection';
+import { PlayAlongGame } from './pages/PlayAlongGame';
 
 /** Reads from the global player context and renders the persistent bar. */
 function GlobalPlayer() {
@@ -84,8 +89,13 @@ const App = () => {
             <Route path="/artist-dashboard" element={<ArtistDashboard />} />
             <Route path="/upload-song" element={<UploadSongPage />} />
             <Route path="/social" element={<SocialHub />} />
-            <Route path="/scores" element={<ScoresPage />} />
-            <Route path="/scores/:id" element={<ScorePlayerPage />} />
+            <Route path="/games" element={<GameHub />} />
+            <Route path="/games/karaoke" element={<KaraokeSelection />} />
+            <Route path="/games/karaoke/:id" element={<KaraokeGame />} />
+            <Route path="/games/playalong" element={<PlayAlongSelection />} />
+            <Route path="/games/playalong/:id" element={<PlayAlongGame />} />
+            <Route path="/mockScores" element={<ScoresPage />} />
+            <Route path="/mockScores/:id" element={<ScorePlayerPage />} />
             <Route path="/auth" element={<AuthPage />} />
             {/* Catch-all → home */}
             <Route path="*" element={<Navigate to="/home" replace />} />

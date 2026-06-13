@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
-import { useArtist } from '../hooks/useItunesData';
-import { formatDuration } from '../utils/itunesApi';
+import { useArtist } from '../mock/mockData';
+import { formatDuration } from '../mock/mockData';
 import { usePlayer } from '../components/PlayerContext';
 
 // ─── Gradient palette cycled by artistId ─────────────────────────────────────
@@ -197,11 +197,20 @@ export const ArtistPage = () => {
               </button>
 
               <div className="flex flex-col sm:flex-row gap-8 items-center sm:items-end">
-                {/* Artist avatar — gradient circle with initials */}
-                <div className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shadow-2xl shadow-black/60 flex-shrink-0 border-4 border-white/10`}>
-                  <span className="text-5xl sm:text-6xl font-display font-black text-white select-none">
-                    {(artist?.artistName ?? '?').charAt(0).toUpperCase()}
-                  </span>
+                {/* Artist avatar — fallback to initials if no artwork */}
+                <div className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full overflow-hidden bg-gradient-to-br ${gradient} flex items-center justify-center shadow-2xl shadow-black/60 flex-shrink-0 border-4 border-white/10`}>
+                  {artist?.avatar ? (
+                    <img
+                      src={artist.avatar}
+                      alt={artist.artistName}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-5xl sm:text-6xl font-display font-black text-white select-none">
+                      {(artist?.artistName ?? '?').charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
 
                 {/* Meta */}
@@ -215,12 +224,6 @@ export const ArtistPage = () => {
                     {artist?.primaryGenreName && (
                       <span className="px-3 py-1 rounded-full bg-white/8 border border-white/10 text-xs font-medium">
                         {artist.primaryGenreName}
-                      </span>
-                    )}
-                    {topSongs.length > 0 && (
-                      <span className="flex items-center gap-1.5">
-                        <Music2 className="w-3.5 h-3.5" />
-                        {topSongs.length} top tracks
                       </span>
                     )}
                     {albums.length > 0 && (
@@ -261,17 +264,6 @@ export const ArtistPage = () => {
                     >
                       <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
                     </button>
-                    {artist?.artistLinkUrl && (
-                      <a
-                        href={artist.artistLinkUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-3 rounded-full text-textMuted hover:text-white hover:bg-white/5 transition-all"
-                        aria-label="Open in iTunes"
-                      >
-                        <ExternalLink className="w-5 h-5" />
-                      </a>
-                    )}
                   </div>
                 </div>
               </div>

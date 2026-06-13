@@ -8,10 +8,10 @@ import {
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
-import { useTopSongs, useNewReleases, useTrackSearch, useGenreSearch } from '../hooks/useItunesData';
-import { formatDuration, formatReleaseDate } from '../utils/itunesApi';
+import { useTopSongs, useNewReleases, useTrackSearch, useGenreSearch } from '../mock/mockData';
+import { formatDuration, formatReleaseDate } from '../mock/mockData';
 import { usePlayer } from '../components/PlayerContext';
-import { GENRES, MOODS, RADIO_STATIONS } from '../data/mockData';
+import { GENRES, MOODS, RADIO_STATIONS } from '../mock/mockData';
 import { AlbumPage } from './AlbumPage';
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -60,44 +60,46 @@ const SkeletonCard = () => (
 /** Single search result row */
 const SearchResultRow = ({ track, index }) => {
   const { play, currentTrack, isPlaying, togglePlayPause } = usePlayer();
+  const navigate = useNavigate();
   const isThisTrack = currentTrack?.trackId === track.trackId;
 
   return (
-  <a
-    href={track.trackViewUrl ?? '#'}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors group cursor-pointer"
+  <div 
+    onClick={() => {
+      if (isThisTrack) togglePlayPause();
+      else play(track);
+    }}
+    className="grid grid-cols-[40px_1fr_auto] sm:grid-cols-[40px_1fr_160px_80px] items-center px-4 py-3 border-b border-white/5 last:border-0 group hover:bg-white/3 transition-colors cursor-pointer"
   >
-    <span className="text-textMuted text-sm w-5 text-center tabular-nums">{index + 1}</span>
-    <img
-      src={track.artworkUrl100}
-      alt={track.trackName}
-      className="w-10 h-10 rounded-lg object-cover flex-shrink-0 shadow-md"
-      loading="lazy"
-    />
-    <div className="min-w-0 flex-1">
-      <p className={`text-sm font-semibold truncate transition-colors ${isThisTrack ? 'text-primary' : 'group-hover:text-primary'}`}>{track.trackName}</p>
-      <p className="text-xs text-textMuted truncate">{track.artistName} · {track.collectionName}</p>
+    <div className="relative w-5">
+      <span className={`text-sm font-bold absolute inset-0 flex items-center transition-opacity ${isThisTrack ? 'opacity-0' : 'text-textMuted group-hover:opacity-0'}`}>{index + 1}</span>
+      {isThisTrack && isPlaying ? <Pause className="w-4 h-4 text-primary fill-current" /> : <Play className={`w-4 h-4 text-white fill-current transition-opacity ${isThisTrack ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-100'}`} />}
     </div>
-    <span className="hidden sm:block text-xs text-textMuted tabular-nums flex-shrink-0">
-      {formatDuration(track.trackTimeMillis)}
+    <div className="flex items-center gap-3 min-w-0">
+      <img src={track.artworkUrl100} alt={track.collectionName} className="w-10 h-10 rounded-lg object-cover flex-shrink-0 shadow-md" loading="lazy" onError={(e) => { e.currentTarget.style.display='none'; }} />
+      <div className="min-w-0">
+        <p className={`font-semibold text-sm truncate transition-colors ${isThisTrack ? 'text-primary' : 'group-hover:text-primary'}`}>{track.trackName}</p>
+        <p className="text-xs text-textMuted mt-0.5 truncate">
+          <RouterLink
+            to={track.artistId ? `/artist/${track.artistId}` : `/discover`}
+            className="hover:text-white transition-colors"
+          >
+            {track.artistName}
+          </RouterLink>
+        </p>
+      </div>
+    </div>
+    <span
+      className="hidden sm:block text-xs text-textMuted truncate pr-4 cursor-pointer hover:text-white transition-colors"
+      onClick={(e) => {
+        e.stopPropagation();
+        const albumId = track.collectionId ?? track.trackId;
+        navigate(`/album/${albumId}`);
+      }}
+    >
+      {track.collectionName}
     </span>
-    {track.previewUrl && (
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          if (isThisTrack) togglePlayPause();
-          else play(track);
-        }}
-        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${isThisTrack ? 'bg-primary text-background opacity-100' : 'bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-background opacity-0 group-hover:opacity-100'}`}
-        aria-label="Preview"
-      >
-        {isThisTrack && isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
-      </button>
-    )}
-    <ExternalLink className="w-3.5 h-3.5 text-textMuted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-  </a>
+  </div>
   );
 };
 
@@ -126,7 +128,7 @@ const TrendingTableRow = ({ track, index }) => {
         <p className="text-xs text-textMuted mt-0.5 truncate">
           <RouterLink
             to={track.artistId ? `/artist/${track.artistId}` : `/discover`}
-            className="hover:text-primary transition-colors"
+            className="hover:text-white transition-colors"
           >
             {track.artistName}
           </RouterLink>
@@ -182,7 +184,7 @@ const ReleaseCard = ({ track }) => {
         <p className="text-xs text-textMuted mt-0.5 truncate">
           <RouterLink
             to={track.artistId ? `/artist/${track.artistId}` : `/discover`}
-            className="hover:text-primary transition-colors"
+            className="hover:text-white transition-colors"
           >
             {track.artistName}
           </RouterLink>
@@ -204,7 +206,7 @@ const ReleaseCard = ({ track }) => {
 /** Radio station card – fetches a queue of tracks and plays them in order */
 const RadioStationCard = ({ station }) => {
   const { playQueue, currentTrack, isPlaying, togglePlayPause, queue } = usePlayer();
-  const { data: tracks, loading } = useGenreSearch(station.query, 20);
+  const { data: tracks, loading } = useGenreSearch(station.query, 15);
   const [loadingPlay, setLoadingPlay] = useState(false);
 
   // A station is "active" if any track in queue belongs to the station's query context
@@ -296,7 +298,17 @@ const RadioStationCard = ({ station }) => {
 /** Genre modal – fetches songs for a specific genre query */
 const GenreModal = ({ genre, onClose }) => {
   const { play, currentTrack, isPlaying, togglePlayPause } = usePlayer();
-  const { data: tracks, loading } = useGenreSearch(genre.query, 25);
+  const [localSearch, setLocalSearch] = useState('');
+  
+  const { data: defaultTracks, loading: defaultLoading } = useGenreSearch(genre.query, 25);
+  const { tracks: searchResults, loading: searchLoading } = useTrackSearch(
+    localSearch.trim() ? `${localSearch} ${genre.label}` : '',
+    25
+  );
+
+  const isSearching = localSearch.trim().length > 0;
+  const tracks = isSearching ? searchResults : defaultTracks;
+  const loading = isSearching ? searchLoading : defaultLoading;
 
   // Close on Escape
   useEffect(() => {
@@ -317,29 +329,55 @@ const GenreModal = ({ genre, onClose }) => {
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`relative p-6 rounded-t-2xl flex items-end gap-5 bg-gradient-to-br ${genre.gradient} shrink-0`}>
+        <div className={`relative p-6 rounded-t-2xl flex flex-col gap-4 bg-gradient-to-br ${genre.gradient} shrink-0`}>
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-white/80 hover:text-white hover:bg-black/60 transition-all"
+            className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-white/80 hover:text-white hover:bg-black/60 transition-all z-10"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-lg flex-shrink-0">
-            <Icon className="w-8 h-8 text-white" />
-          </div>
-          <div>
-            <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">Genre</p>
-            <h2 className="font-display text-3xl font-bold text-white">{genre.label}</h2>
-            <div className="flex items-center gap-3 mt-2">
-              <button
-                onClick={() => { if (tracks.length > 0) play(tracks[0]); }}
-                className="flex items-center gap-2 bg-white text-black font-bold text-sm px-5 py-2 rounded-full hover:scale-105 hover:bg-primary hover:text-white transition-all shadow-lg"
-              >
-                <Play className="w-4 h-4 fill-current" /> Play All
-              </button>
-              <span className="text-white/60 text-xs">{tracks.length} tracks</span>
+          
+          <div className="flex items-end gap-5">
+            <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-lg flex-shrink-0">
+              <Icon className="w-8 h-8 text-white" />
             </div>
+            <div className="flex-1">
+              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">Genre</p>
+              <h2 className="font-display text-3xl font-bold text-white">{genre.label}</h2>
+              <div className="flex items-center gap-3 mt-2">
+                <button
+                  onClick={() => { if (tracks.length > 0) play(tracks[0]); }}
+                  className="flex items-center gap-2 bg-white text-black font-bold text-sm px-5 py-2 rounded-full hover:scale-105 hover:bg-primary hover:text-white transition-all shadow-lg"
+                >
+                  <Play className="w-4 h-4 fill-current" /> Play All
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative mt-2">
+            {isSearching && searchLoading ? (
+              <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 animate-spin pointer-events-none z-10" />
+            ) : (
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none z-10" />
+            )}
+            <input
+              type="text"
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              placeholder={`Search within ${genre.label}…`}
+              className="w-full pl-10 pr-10 py-3 rounded-xl bg-black/20 border border-white/20 focus:border-white/40 focus:ring-1 focus:ring-white/40 outline-none transition-all text-white placeholder:text-white/50 text-sm backdrop-blur-sm shadow-inner"
+            />
+            {localSearch && (
+              <button
+                onClick={() => setLocalSearch('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -388,19 +426,65 @@ const GenreModal = ({ genre, onClose }) => {
   );
 };
 
+const MoreGenresModal = ({ onClose, onSelectGenre }) => {
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    onSelectGenre({
+      label: q,
+      query: q,
+      icon: Search,
+      gradient: 'from-purple-600 to-indigo-800'
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-[#111113] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="font-display text-2xl font-bold">Search Genres</h2>
+          <button onClick={onClose} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors"><X className="w-5 h-5 text-white/70" /></button>
+        </div>
+        <form onSubmit={handleSearch} className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
+          <input
+            type="text"
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="e.g. K-Pop, Heavy Metal, Acoustic..."
+            className="w-full pl-12 pr-4 py-4 rounded-xl bg-black/20 border border-white/20 focus:border-white/40 focus:ring-1 focus:ring-white/40 outline-none text-white placeholder:text-white/30"
+          />
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export const DiscoverPage = () => {
   const [searchQuery,    setSearchQuery]    = useState('');
   const [activeMood,     setActiveMood]     = useState(null);
   const [selectedGenre,  setSelectedGenre]  = useState(null);
+  const [showMoreGenres, setShowMoreGenres] = useState(false);
 
   // API hooks
   const { data: topSongs,  loading: topLoading  } = useTopSongs(10);
-  const { data: newReleases, loading: newLoading  } = useNewReleases(8);
+  const { data: newReleases, loading: newLoading  } = useNewReleases(10);
   const { tracks: searchResults, loading: searchLoading } = useTrackSearch(
     activeMood ? `${activeMood.toLowerCase()} music` : searchQuery,
-    20
+    15
   );
 
   const isSearching = searchQuery.trim().length > 0 || activeMood !== null;
@@ -489,6 +573,12 @@ export const DiscoverPage = () => {
               </div>
             ) : searchResults.length > 0 ? (
               <div className="glass-panel rounded-2xl overflow-hidden border border-white/5">
+                {/* Header row */}
+                <div className="grid grid-cols-[40px_1fr_auto] sm:grid-cols-[40px_1fr_160px_80px] items-center px-4 py-3 border-b border-white/5 text-xs font-semibold uppercase tracking-widest text-textMuted">
+                  <span>#</span>
+                  <span>Title</span>
+                  <span className="hidden sm:block">Album</span>
+                </div>
                 {searchResults.slice(0, 15).map((track, i) => (
                   <SearchResultRow key={track.trackId} track={track} index={i} />
                 ))}
@@ -528,6 +618,15 @@ export const DiscoverPage = () => {
                 </button>
               );
             })}
+          </div>
+          <div className="mt-8 flex justify-center">
+            <button
+              onClick={() => setShowMoreGenres(true)}
+              className="px-6 py-3 border border-white/10 text-white rounded-full flex items-center gap-2 hover:bg-white/5 transition-colors font-medium text-sm"
+            >
+              <Search className="w-4 h-4 text-textMuted" />
+              Browse more genre
+            </button>
           </div>
         </div>
       </section>
@@ -607,6 +706,14 @@ export const DiscoverPage = () => {
       {/* ── Genre Modal ─────────────────────────────────────────── */}
       {selectedGenre && (
         <GenreModal genre={selectedGenre} onClose={() => setSelectedGenre(null)} />
+      )}
+
+      {/* ── More Genres Modal ─────────────────────────────────────────── */}
+      {showMoreGenres && (
+        <MoreGenresModal 
+          onClose={() => setShowMoreGenres(false)} 
+          onSelectGenre={setSelectedGenre} 
+        />
       )}
     </div>
   );

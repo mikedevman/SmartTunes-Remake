@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from '../components/Navbar';
-import { SOCIAL_POSTS } from '../data/mockData';
+import { Footer } from '../components/Footer';
+import { Avatar } from '../components/Avatar';
+import { SOCIAL_POSTS, SOCIAL_COMMENTS } from '../mock/mockData';
 import { usePlayer } from '../components/PlayerContext';
 import { useArtist } from '../components/ArtistContext';
-import { searchTracks, getLargeArtwork } from '../utils/itunesApi';
+import { searchTracks, getLargeArtwork } from '../mock/mockData';
 import {
   MessageSquare, Heart, Share2, Music2, Search,
   Play, Pause, X, Send, Clock, Loader2, Mic2, Plus
 } from 'lucide-react';
 
-const STORAGE_KEY = 'smarttunes_social_posts_v3';
+const STORAGE_KEY = 'smarttunes_social_posts_v6';
 
 const DEFAULT_ALBUM_ART = 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80';
 
@@ -18,13 +20,20 @@ const getHighResArt = (url) => {
   return getLargeArtwork(url, 600);
 };
 
+function attachComments(posts) {
+  return posts.map((post) => ({
+    ...post,
+    comments: post.comments ?? SOCIAL_COMMENTS[post.id] ?? []
+  }));
+}
+
 function loadPosts() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return attachComments(JSON.parse(raw));
   } catch (e) {}
   
-  return SOCIAL_POSTS;
+  return attachComments(SOCIAL_POSTS);
 }
 
 function savePosts(posts) {
@@ -79,7 +88,7 @@ const AttachSongModal = ({ onClose, onAttach }) => {
               className={`flex-1 py-4 text-sm font-semibold transition-all ${tab === 'search' ? 'text-primary border-b-2 border-primary bg-primary/5' : 'text-textMuted hover:text-white hover:bg-white/5'}`}
               onClick={() => setTab('search')}
             >
-              Search World
+              Search SmartTunes
             </button>
             <button 
               className={`flex-1 py-4 text-sm font-semibold transition-all ${tab === 'my-tracks' ? 'text-primary border-b-2 border-primary bg-primary/5' : 'text-textMuted hover:text-white hover:bg-white/5'}`}
@@ -184,9 +193,68 @@ export const SocialHub = () => {
   const [content, setContent] = useState('');
   const [attachedSong, setAttachedSong] = useState(null);
   const [showAttachModal, setShowAttachModal] = useState(false);
+  const [openCommentsId, setOpenCommentsId] = useState(null);
+  const [commentDrafts, setCommentDrafts] = useState({});
   
   const { artist } = useArtist();
   const { currentTrack, isPlaying, togglePlayPause, play, playQueue } = usePlayer();
+
+  useEffect(() => {
+    const fetchRealImages = async () => {
+      const fakeTrackIds = [1459750468, 1440912113, 1440854841, 1440858162, 1440857466];
+      const needsUpdate = posts.filter(p => 
+        p.song && p.song.trackName && (
+          p.song.artworkUrl100?.includes('unsplash.com') || 
+          fakeTrackIds.includes(p.song.trackId)
+        )
+      );
+      if (needsUpdate.length === 0) return;
+
+      try {
+        const promises = needsUpdate.map(async p => {
+          try {
+            const query = `${p.song.trackName} ${p.song.artistName}`;
+            const tracks = await searchTracks(query, 1);
+            if (tracks && tracks.length > 0) {
+              return { postId: p.id, track: tracks[0] };
+            }
+          } catch (err) {
+            console.error(err);
+          }
+          return null;
+        });
+
+        const results = await Promise.all(promises);
+        const validResults = results.filter(Boolean);
+        
+        if (validResults.length > 0) {
+          setPosts(prev => {
+            const updated = prev.map(p => {
+              const match = validResults.find(r => r.postId === p.id);
+              if (match && p.song) {
+                return { 
+                  ...p, 
+                  song: { 
+                    ...p.song, 
+                    trackId: match.track.trackId,
+                    artworkUrl100: getLargeArtwork(match.track.artworkUrl100, 600),
+                    previewUrl: match.track.previewUrl || p.song.previewUrl
+                  } 
+                };
+              }
+              return p;
+            });
+            savePosts(updated);
+            return updated;
+          });
+        }
+      } catch (e) {
+        console.error('Failed to fetch real track images', e);
+      }
+    };
+    
+    fetchRealImages();
+  }, []);
 
   const handlePost = () => {
     if (!content.trim() && !attachedSong) return;
@@ -195,7 +263,7 @@ export const SocialHub = () => {
       id: `post_${Date.now()}`,
       author: { 
         name: artist ? artist.stageName : 'Guest User', 
-        avatar: artist?.avatar || `https://i.pravatar.cc/150?u=guest_${Date.now()}`
+        avatar: artist?.avatar || null
       },
       content: content.trim(),
       song: attachedSong,
@@ -220,6 +288,37 @@ export const SocialHub = () => {
     });
     setPosts(updated);
     savePosts(updated);
+  };
+
+  const toggleComments = (postId) => {
+    setOpenCommentsId((current) => (current === postId ? null : postId));
+  };
+
+  const handleAddComment = (postId) => {
+    const draft = commentDrafts[postId]?.trim();
+    if (!draft) return;
+
+    const updated = posts.map((post) => {
+      if (post.id !== postId) return post;
+      const nextComment = {
+        id: `comment_${Date.now()}`,
+        author: {
+          name: artist ? artist.stageName : 'Guest User',
+          avatar: artist?.avatar || null
+        },
+        text: draft,
+        timestamp: new Date().toISOString()
+      };
+
+      return {
+        ...post,
+        comments: [...(post.comments || []), nextComment]
+      };
+    });
+
+    setPosts(updated);
+    savePosts(updated);
+    setCommentDrafts((prev) => ({ ...prev, [postId]: '' }));
   };
 
   const handlePlaySong = (song) => {
@@ -262,7 +361,7 @@ export const SocialHub = () => {
         {/* ── Create Post Box ── */}
         <div className="relative bg-white/5 rounded-3xl p-6 border border-white/10 shadow-2xl backdrop-blur-xl mb-12 group transition-all hover:bg-white/10">
           <div className="flex gap-4 mb-4">
-            <img src={artist?.avatar} className="w-12 h-12 rounded-full object-cover border-2 border-white/10 flex-shrink-0" alt="avatar" />
+            <Avatar src={artist?.avatar} name={artist?.stageName || 'Guest User'} className="w-12 h-12 rounded-full object-cover border-2 border-white/10 flex-shrink-0" alt="avatar" />
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -328,7 +427,7 @@ export const SocialHub = () => {
                   
                   {/* Author Info */}
                   <div className="flex items-center gap-4 mb-6">
-                    <img src={post.author.avatar} onError={(e) => e.target.src = DEFAULT_ALBUM_ART} className="w-12 h-12 rounded-full border-2 border-white/10 shadow-lg" alt="" />
+                    <Avatar src={post.author.avatar} name={post.author.name} className="w-12 h-12 rounded-full border-2 border-white/10 shadow-lg" alt={post.author.name} />
                     <div>
                       <p className="text-sm font-semibold text-white flex items-center gap-2">
                         {post.author.name}
@@ -370,12 +469,56 @@ export const SocialHub = () => {
                               <Heart className={`w-5 h-5 transition-transform group-hover:scale-110 ${post.isLiked ? 'fill-pink-500 text-pink-500' : 'text-textMuted group-hover:text-white'}`} />
                             </button>
                             
-                            <button className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors group">
+                            <button className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors group" onClick={() => toggleComments(post.id)}>
                               <MessageSquare className="w-5 h-5 text-textMuted group-hover:text-white transition-transform group-hover:scale-110" />
                             </button>
                           </div>
                           {post.likes > 0 && (
                             <p className="text-xs text-textMuted mt-4 font-semibold text-center sm:text-left">{post.likes} people vibed with this</p>
+                          )}
+
+                          {openCommentsId === post.id && (
+                            <div className="mt-6 rounded-3xl border border-white/10 bg-black/30 p-4">
+                              <div className="flex items-center justify-between mb-4 text-xs uppercase tracking-[0.24em] text-textMuted">
+                                <span>Community comments</span>
+                                <span>{post.comments?.length ?? 0} replies</span>
+                              </div>
+
+                              <div className="space-y-4 max-h-64 overflow-y-auto pr-1">
+                                {(post.comments && post.comments.length > 0) ? post.comments.map((comment) => (
+                                  <div key={comment.id} className="flex items-start gap-3">
+                                    <Avatar src={comment.author.avatar} name={comment.author.name} className="w-9 h-9 rounded-full border border-white/10 object-cover" alt={comment.author.name} />
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <span className="font-semibold text-white">{comment.author.name}</span>
+                                        <span className="text-textMuted">{timeAgo(comment.timestamp)}</span>
+                                      </div>
+                                      <p className="text-sm text-white/90 mt-1">{comment.text}</p>
+                                    </div>
+                                  </div>
+                                )) : (
+                                  <p className="text-sm text-textMuted">No comments yet — start the conversation.</p>
+                                )}
+                              </div>
+
+                              <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                                <input
+                                  type="text"
+                                  value={commentDrafts[post.id] ?? ''}
+                                  onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                                  placeholder="Add a comment..."
+                                  className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-primary/50"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddComment(post.id)}
+                                  disabled={!commentDrafts[post.id]?.trim()}
+                                  className="btn-primary px-5 py-3 rounded-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Post
+                                </button>
+                              </div>
+                            </div>
                           )}
                         </div>
                       )}
@@ -418,6 +561,7 @@ export const SocialHub = () => {
           })}
         </div>
       </div>
+      <Footer />
 
       {showAttachModal && (
         <AttachSongModal 

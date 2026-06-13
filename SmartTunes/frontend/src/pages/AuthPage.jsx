@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useArtist } from '../components/ArtistContext';
 import { Eye, EyeOff, Music2, Mail, Lock, User, ArrowRight } from 'lucide-react';
 
 // ─── Social OAuth Button ─────────────────────────────────────────────────────
@@ -8,7 +9,7 @@ const SocialButton = ({ icon, label, onClick }) => (
   <button
     onClick={onClick}
     type="button"
-    className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-200 text-sm font-medium text-white group"
+    className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-200 text-sm font-medium text-white group"
     aria-label={`Continue with ${label}`}
   >
     {icon}
@@ -83,11 +84,55 @@ export const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
+  const { registerArtist, uploadSong } = useArtist();
+  const navigate = useNavigate();
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    // Grab the name if available
+    const fullName = e.target['auth-fullname']?.value || 'New Artist';
+
     // Simulate async auth — replace with real API call
-    setTimeout(() => setIsLoading(false), 1500);
+    setTimeout(() => {
+      setIsLoading(false);
+      
+      if (!isLogin) {
+        // Establish mock data for new account
+        registerArtist({
+          stageName: fullName,
+          bio: 'Just started my musical journey on SmartTunes! 🎵',
+          genres: ['Pop', 'Electronic'],
+          coverUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=800&q=80',
+          followers: 42,
+          following: 15,
+        });
+
+        uploadSong({
+          title: 'First Demo Track',
+          artistName: fullName,
+          coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80',
+          audioUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/cc/6d/65/cc6d655f-c2db-c2a4-f259-28c0490f84dd/mzaf_10793666270659345037.plus.aac.p.m4a',
+          duration: 180,
+          plays: 12,
+          likes: 5
+        });
+
+        uploadSong({
+          title: 'Midnight Vibe',
+          artistName: fullName,
+          coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
+          audioUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/05/27/1f/05271fc2-c32f-48e0-1c31-620256eaab9b/mzaf_6717148560879555242.plus.aac.p.m4a',
+          duration: 215,
+          plays: 8,
+          likes: 2
+        });
+      }
+      
+      // Redirect to home after login/signup
+      navigate('/home');
+    }, 1500);
   };
 
   return (
@@ -155,15 +200,12 @@ export const AuthPage = () => {
             </div>
 
             {/* Divider */}
-            <div className="relative mb-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/8" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase tracking-widest">
-                <span className="px-3 text-textMuted" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  Or with email
-                </span>
-              </div>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex-1 border-t border-white/8" />
+              <span className="text-xs uppercase tracking-widest text-textMuted font-semibold">
+                Or with email
+              </span>
+              <div className="flex-1 border-t border-white/8" />
             </div>
 
             {/* Form */}
@@ -267,7 +309,7 @@ export const AuthPage = () => {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <footer className="py-8 px-4 sm:px-6 lg:px-8 border-t border-white/5 relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-textMuted">
-          <p>© 2025 SmartTunes. All rights reserved.</p>
+          <p>© 2026 SmartTunes. All rights reserved.</p>
           <div className="flex gap-6">
             {['Privacy Policy', 'Terms of Service', 'Cookies'].map((item) => (
               <a key={item} href="#" className="hover:text-white transition-colors">

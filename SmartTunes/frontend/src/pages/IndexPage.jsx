@@ -7,9 +7,9 @@ import {
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
-import { useTopSongs, useGenreSearch } from '../hooks/useItunesData';
+import { useTopSongs, useGenreSearch, numberOfSongs, numberOfActiveListeners, averageRating, estimateCount, ARTIST_SPOTLIGHT } from '../mock/mockData';
 import { usePlayer } from '../components/PlayerContext';
-import { GLOW_COLORS, FALLBACK_COVERS, PLAYLIST_META, FEATURES, TESTIMONIALS } from '../data/mockData';
+import { GLOW_COLORS, FALLBACK_COVERS, PLAYLIST_META, FEATURES, TESTIMONIALS } from '../mock/mockData';
 
 // ─── Small components ────────────────────────────────────────────────────────
 
@@ -91,7 +91,19 @@ const TrendingRow = ({ track, rank, queueTracks = [], index = 0 }) => {
     />
     <div className="min-w-0 flex-1">
       <p className={`text-sm font-semibold truncate transition-colors ${isThisTrack ? 'text-primary' : 'group-hover:text-primary'}`}>{track.trackName}</p>
-      <p className="text-xs text-textMuted truncate">{track.artistName}</p>
+      <p className="text-xs text-textMuted truncate">
+        {track.artistId ? (
+          <RouterLink
+            to={`/artist/${track.artistId}`}
+            className="hover:text-white hover:underline transition-colors"
+            onClick={e => e.stopPropagation()}
+          >
+            {track.artistName}
+          </RouterLink>
+        ) : (
+          track.artistName
+        )}
+      </p>
     </div>
     {track.primaryGenreName && (
       <span className="hidden sm:block text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-textMuted flex-shrink-0">
@@ -131,26 +143,28 @@ export const IndexPage = () => {
         color:  GLOW_COLORS[i % GLOW_COLORS.length],
       }))
     : [
-        { title: 'Midnight City',  artist: 'M83',       album: "Hurry Up, We're Dreaming", cover: FALLBACK_COVERS[0], color: GLOW_COLORS[0] },
-        { title: 'Starboy',        artist: 'The Weeknd', album: 'Starboy',                   cover: FALLBACK_COVERS[1], color: GLOW_COLORS[1] },
-        { title: 'Levitating',     artist: 'Dua Lipa',  album: 'Future Nostalgia',           cover: FALLBACK_COVERS[2], color: GLOW_COLORS[2] },
+        { title: 'Midnight City',  artist: 'M83',       album: "Hurry Up, We're Dreaming", cover: FALLBACK_COVERS[0], color: GLOW_COLORS[0], artistId: 1440858162, collectionId: 1440857926 },
+        { title: 'Starboy',        artist: 'The Weeknd', album: 'Starboy',                   cover: FALLBACK_COVERS[1], color: GLOW_COLORS[1], artistId: 390153216, collectionId: 1440873036 },
+        { title: 'Levitating',     artist: 'Dua Lipa',  album: 'Future Nostalgia',           cover: FALLBACK_COVERS[2], color: GLOW_COLORS[2], artistId: 1062017365, collectionId: 1530691236 },
       ];
 
   const genreCovers = playlistDataList.map(data => data[0]?.artworkUrl100);
 
   const trendingTracks = topSongs.slice(3, 8); // songs 4-8 for trending strip
 
+  const { play, playQueue, currentTrack, isPlaying: globalIsPlaying, togglePlayPause, progress: globalProgress, seek } = usePlayer();
+
   // ── Carousel auto-advance ──
   useEffect(() => {
+    if (globalIsPlaying) return;
     const id = setInterval(() => setCurrentSongIndex(p => (p + 1) % carouselSongs.length), 5000);
     return () => clearInterval(id);
-  }, [carouselSongs.length]);
+  }, [carouselSongs.length, globalIsPlaying]);
 
   const nextSong = () => setCurrentSongIndex(p => (p + 1) % carouselSongs.length);
   const prevSong = () => setCurrentSongIndex(p => (p - 1 + carouselSongs.length) % carouselSongs.length);
   const currentSong = carouselSongs[currentSongIndex] ?? carouselSongs[0];
   
-  const { play, playQueue, currentTrack, isPlaying: globalIsPlaying, togglePlayPause, progress: globalProgress, seek } = usePlayer();
   const isCurrentSongPlaying = currentTrack?.trackId && currentSong?.trackId === currentTrack?.trackId;
 
   const formatTime = (pct, total = 30) => {
@@ -177,7 +191,7 @@ export const IndexPage = () => {
           <div className="space-y-8 animate-slide-up">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              Now streaming · 100M+ songs
+              Now streaming · {estimateCount(numberOfSongs)} songs
             </div>
             <h1 className="font-display text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.05] tracking-tight">
               Feel the<br />
@@ -205,10 +219,10 @@ export const IndexPage = () => {
                 ))}
               </div>
               <div>
-                <p className="text-sm text-textMuted"><span className="text-white font-bold">10M+</span> active listeners</p>
+                <p className="text-sm text-textMuted"><span className="text-white font-bold">{estimateCount(numberOfActiveListeners)}</span> active listeners</p>
                 <div className="flex items-center gap-1 mt-0.5">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 text-yellow-400 fill-current" />)}
-                  <span className="text-xs text-textMuted ml-1">4.9/5</span>
+                  {[...Array(Math.round(averageRating))].map((_, i) => <Star key={i} className="w-3 h-3 text-yellow-400 fill-current" />)}
+                  <span className="text-xs text-textMuted ml-1">{averageRating}/5</span>
                 </div>
               </div>
             </div>
@@ -274,8 +288,30 @@ export const IndexPage = () => {
                   ) : (
                     <>
                       <h3 className="font-display font-bold text-xl mb-0.5 truncate max-w-[200px]">{currentSong?.title}</h3>
-                      <p className="text-textMuted text-sm">{currentSong?.artist}</p>
-                      <p className="text-textMuted/60 text-xs truncate max-w-[200px]">{currentSong?.album}</p>
+                      <p className="text-textMuted text-sm">
+                        {currentSong?.artistId ? (
+                          <RouterLink
+                            to={`/artist/${currentSong.artistId}`}
+                            className="hover:text-white hover:underline transition-colors pointer-events-auto relative z-10"
+                          >
+                            {currentSong.artist}
+                          </RouterLink>
+                        ) : (
+                          currentSong?.artist
+                        )}
+                      </p>
+                      <p className="text-textMuted/60 text-xs truncate max-w-[200px]">
+                        {currentSong?.collectionId ? (
+                          <RouterLink
+                            to={`/album/${currentSong.collectionId}`}
+                            className="hover:text-white hover:underline transition-colors pointer-events-auto relative z-10"
+                          >
+                            {currentSong.album}
+                          </RouterLink>
+                        ) : (
+                          currentSong?.album
+                        )}
+                      </p>
                     </>
                   )}
                 </div>
@@ -310,7 +346,6 @@ export const IndexPage = () => {
 
               {/* Controls */}
               <div className="flex items-center justify-between">
-                <button className="text-textMuted hover:text-white transition-colors p-1" aria-label="Shuffle"><Shuffle className="w-4 h-4" /></button>
                 <button onClick={prevSong} className="text-white hover:text-primary transition-colors p-1" aria-label="Previous"><SkipBack className="w-7 h-7 fill-current" /></button>
                 <button
                   onClick={() => {
@@ -323,9 +358,6 @@ export const IndexPage = () => {
                   {isCurrentSongPlaying && globalIsPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-0.5" />}
                 </button>
                 <button onClick={nextSong} className="text-white hover:text-primary transition-colors p-1" aria-label="Next"><SkipForward className="w-7 h-7 fill-current" /></button>
-                <button className="text-textMuted hover:text-white transition-colors p-1" aria-label="Queue">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z" /></svg>
-                </button>
               </div>
             </div>
           </div>
@@ -413,20 +445,46 @@ export const IndexPage = () => {
       {/* ── Artist Spotlight ─────────────────────────────────────────── */}
       <section id="spotlight" className="py-24 relative overflow-hidden" aria-label="Artist spotlight">
         <div className="absolute inset-0">
-          <img src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=2000&q=80" alt="" className="w-full h-full object-cover opacity-25" aria-hidden="true" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <img src={ARTIST_SPOTLIGHT.backgroundImage} alt="" className="w-full h-full object-cover opacity-25" aria-hidden="true" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/0 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-2xl">
-            <p className="text-primary font-bold tracking-widest uppercase mb-4 text-sm">Artist Spotlight</p>
-            <h2 className="font-display text-5xl md:text-7xl font-bold mb-6 leading-tight">The Weeknd</h2>
+            <p className="text-primary font-bold tracking-widest uppercase mb-4 text-sm">{ARTIST_SPOTLIGHT.label}</p>
+            <h2 className="font-display text-5xl md:text-7xl font-bold mb-6 leading-tight">
+              {ARTIST_SPOTLIGHT.artistId ? (
+                <RouterLink to={`/artist/${ARTIST_SPOTLIGHT.artistId}`} className="hover:text-white hover:underline transition-colors">
+                  {ARTIST_SPOTLIGHT.name}
+                </RouterLink>
+              ) : (
+                ARTIST_SPOTLIGHT.name
+              )}
+            </h2>
             <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-              Experience the new era of pop. Listen to the exclusive release of &quot;After Hours&quot; in spatial audio — only on SmartTunes.
+              {ARTIST_SPOTLIGHT.description}
             </p>
             <div className="flex flex-wrap gap-4">
-              <button className="btn-primary px-8 py-3 flex items-center gap-2"><Play className="w-5 h-5 fill-current" />Play Latest Album</button>
-              <button className="btn-ghost px-8 py-3 text-white">Follow Artist</button>
+              {ARTIST_SPOTLIGHT.collectionId ? (
+                <RouterLink
+                  to={`/album/${ARTIST_SPOTLIGHT.collectionId}`}
+                  className="btn-primary px-8 py-3 flex items-center gap-2"
+                >
+                  Play Album
+                </RouterLink>
+              ) : (
+                <button className="btn-primary px-8 py-3 flex items-center gap-2">Play Album</button>
+              )}
+              {ARTIST_SPOTLIGHT.artistId ? (
+                <RouterLink
+                  to={`/artist/${ARTIST_SPOTLIGHT.artistId}`}
+                  className="btn-ghost px-8 py-3 text-white"
+                >
+                  Follow Artist
+                </RouterLink>
+              ) : (
+                <button className="btn-ghost px-8 py-3 text-white">Follow Artist</button>
+              )}
             </div>
           </div>
         </div>
@@ -439,7 +497,7 @@ export const IndexPage = () => {
             <p className="text-primary font-semibold text-sm uppercase tracking-widest mb-3">Why SmartTunes</p>
             <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">Everything you need</h2>
             <p className="text-textMuted text-lg max-w-xl mx-auto">Built for music lovers and musicians alike.</p>
-          </div>
+          </div>  
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {FEATURES.map(({ icon: Icon, title, description, color, bg }) => (
               <div key={title} className="glass-panel rounded-2xl p-6 card-hover group border border-white/5 hover:border-white/10">

@@ -1,86 +1,149 @@
-import React from 'react';
-import { Image } from '../components/Image';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayer } from '../components/PlayerContext';
 import { localScorePath } from '../components/SheetMusicViewer';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
-
+import { BookOpen, Play, Upload } from 'lucide-react';
+import { SHEETS } from '../mock/mockData';
 import * as Tone from 'tone';
 
-export const SHEETS = [
-  { id: 1, title: 'Moonlight Sonata', composer: 'Ludwig van Beethoven', image: 'https://images.unsplash.com/photo-1507838871-4439c5b1ef28?auto=format&fit=crop&w=400&q=80', scoreUrl: localScorePath('mariage-damour.mxl') },
-  { id: 2, title: 'Für Elise in A Minor', composer: 'Ludwig van Beethoven', image: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?auto=format&fit=crop&w=400&q=80', scoreUrl: localScorePath('fr-elise--beethoven.mxl') },
-  { id: 3, title: 'Für Elise', composer: 'Ludwig van Beethoven', image: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&w=400&q=80', scoreUrl: localScorePath('c-major.mxl') },
-  { id: 4, title: 'Carmen Prelude', composer: 'Georges Bizet', image: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=400&q=80', scoreUrl: localScorePath('c-minor.mxl') },
-  { id: 5, title: 'Prelude in E Minor', composer: 'Frédéric Chopin', image: 'https://images.unsplash.com/photo-1511379938547-c1f69b13d835?auto=format&fit=crop&w=400&q=80', scoreUrl: localScorePath('5.musicxml') },
-  { id: 6, title: 'Gymnopédie No. 1', composer: 'Erik Satie', image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=400&q=80', scoreUrl: localScorePath('6.musicxml') },
-  { id: 7, title: 'Nocturne Op. 9 No. 2', composer: 'Frédéric Chopin', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80', scoreUrl: localScorePath('7.musicxml') },
-  { id: 8, title: 'Waltz of the Flowers', composer: 'Pyotr Ilyich Tchaikovsky', image: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?auto=format&fit=crop&w=400&q=80', scoreUrl: localScorePath('8.musicxml') },
-];
-
-export const ScoresPage = ({ className, children, variant, contentKey, ...props }) => {
+export const ScoresPage = () => {
   const { currentTrack, isPlaying } = usePlayer();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try { await Tone.start(); } catch (e) { console.error('Tone.start failed', e); }
+    
+    const url = URL.createObjectURL(file);
+    const customSheet = {
+      id: 'custom-' + Date.now(),
+      title: file.name.replace(/\.[^/.]+$/, ""),
+      composer: 'Local Upload',
+      image: 'https://loremflickr.com/400/500/piano,classical?lock=99',
+      scoreUrl: url,
+      diff: 'Custom',
+      uploadedBy: '@you'
+    };
+
+    navigate(`/mockScores/custom`, { state: { customSheet } });
+    
+    // Reset file input so the same file can be uploaded again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   return (
-    <div className="bg-background text-textMain font-sans antialiased selection:bg-primary selection:text-black min-h-screen flex flex-col">
-      <>
-        <Navbar />
+    <div className="bg-background text-textMain font-sans antialiased min-h-screen flex flex-col">
+      <Navbar />
 
-        {/* Sheet Music Grid */}
-        <main className="pt-28 pb-12 flex-grow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="font-display text-5xl font-bold mb-2">Music Score Library</h1>
-            <p className="text-textMuted mb-8">Browse and explore our collection of sheet music.</p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {SHEETS.map((sheet) => {
-                const isActive = currentTrack?.id === sheet.id;
-                return (
-                  <div key={sheet.id} className="group cursor-pointer" onClick={async () => {
-                    try { await Tone.start(); } catch (e) { console.error('Tone.start failed', e); }
-                    navigate(`/scores/${sheet.id}`);
-                  }}>
-                    <div
-                      className="relative aspect-square rounded-lg overflow-hidden mb-4 shadow-lg hover:shadow-xl transition-shadow"
-                      style={isActive ? { boxShadow: '0 0 0 2px #1db954, 0 8px 24px rgba(29,185,84,0.3)' } : {}}
-                    >
-                      <Image variant="cover" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={sheet.image} alt={sheet.title} />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div>
-                          </div>
-                        </div>
-                      </div>
-                      {isActive && isPlaying && (
-                        <div style={{ position: 'absolute', bottom: '10px', left: '10px', display: 'flex', alignItems: 'flex-end', gap: '3px', height: '20px' }}>
-                          {[1, 2, 3].map(i => (
-                            <div key={i} style={{
-                              width: '3px', background: '#1db954', borderRadius: '2px',
-                              animation: `eq-bar-${i} 0.8s ease-in-out infinite alternate`,
-                              height: i === 1 ? '12px' : i === 2 ? '20px' : '8px',
-                            }} />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="font-bold text-lg group-hover:text-primary transition-colors" style={isActive ? { color: '#1db954' } : {}}>{sheet.title}</h3>
-                    <p className="text-sm text-textMuted">{sheet.composer}</p>
-                  </div>
-                );
-              })}
+      <main className="flex-grow pt-32 pb-24 relative overflow-hidden">
+        {/* Background ambient glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/10 rounded-full blur-[120px] -z-10 pointer-events-none" />
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          
+          {/* Header */}
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider mb-6">
+              <BookOpen className="w-4 h-4" /> Interactive Sheet Music
             </div>
-            <style>{`
-              @keyframes eq-bar-1 { from { height: 6px; } to { height: 16px; } }
-              @keyframes eq-bar-2 { from { height: 16px; } to { height: 8px; } }
-              @keyframes eq-bar-3 { from { height: 4px; } to { height: 20px; } }
-            `}</style>
+            <h1 className="font-display text-5xl md:text-6xl font-bold mb-6">
+              Play along with <span className="text-gradient">Classics</span>
+            </h1>
+            <p className="text-xl text-textMuted leading-relaxed mb-8">
+              Explore our curated library of interactive sheet music. Play back, slow down, and follow the score in real-time.
+            </p>
+            
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept=".mscz,.mxl,.musicxml,.xml" 
+              onChange={handleFileUpload} 
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="px-8 py-3.5 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors shadow-xl shadow-white/10 flex items-center gap-2 mx-auto"
+            >
+              <Upload className="w-5 h-5" />
+              Upload Your Score (.mscz / .mxl)
+            </button>
           </div>
-        </main>
 
-        <Footer />
-      </>
+          {/* Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {SHEETS.map((sheet) => {
+              const isActive = currentTrack?.id === sheet.id;
+              return (
+                <div 
+                  key={sheet.id} 
+                  className="group cursor-pointer card-hover" 
+                  onClick={async () => {
+                    try { await Tone.start(); } catch (e) { console.error('Tone.start failed', e); }
+                    navigate(`/mockScores/${sheet.id}`);
+                  }}
+                >
+                  <div className={`relative aspect-[4/5] rounded-2xl overflow-hidden mb-4 shadow-xl ${isActive ? 'ring-2 ring-primary shadow-primary/20' : 'shadow-black/40'}`}>
+                    <img 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                      src={sheet.image} 
+                      alt={sheet.title} 
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+
+                    {/* Difficulty tag */}
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-white/10 text-[10px] font-bold uppercase tracking-wider text-white">
+                      {sheet.diff}
+                    </div>
+
+                    {/* Active State Equalizer */}
+                    {isActive && isPlaying && (
+                      <div className="absolute bottom-4 right-4 flex items-end gap-1 h-4">
+                        {[...Array(3)].map((_, i) => (
+                          <span
+                            key={i}
+                            className="w-1 bg-primary rounded-full"
+                            style={{
+                              animation: `eq-bar 0.${6 + i}s ease-in-out infinite alternate`,
+                              animationDelay: `${i * 0.1}s`
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="px-1 mt-2">
+                    <h3 className={`font-display font-bold text-lg leading-tight truncate transition-colors ${isActive ? 'text-primary' : 'group-hover:text-primary'}`}>
+                      {sheet.title}
+                    </h3>
+                    <p className="text-sm text-textMuted mt-0.5 truncate">{sheet.composer}</p>
+                    <p className="text-xs text-textMuted/60 mt-1 truncate">
+                      Uploaded by <span className="text-white/80 hover:text-white transition-colors">{sheet.uploadedBy}</span>
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+      </main>
+
+      <Footer />
+      <style>{`
+        @keyframes eq-bar {
+          0% { height: 4px; }
+          100% { height: 16px; }
+        }
+      `}</style>
     </div>
   );
 };

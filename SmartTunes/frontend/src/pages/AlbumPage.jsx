@@ -6,8 +6,8 @@ import {
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
-import { useAlbum } from '../hooks/useItunesData';
-import { formatDuration, formatReleaseDate } from '../utils/itunesApi';
+import { useAlbum } from '../mock/mockData';
+import { formatDuration, formatReleaseDate } from '../mock/mockData';
 import { usePlayer } from '../components/PlayerContext';
 
 // ─── Track row ────────────────────────────────────────────────────────────────

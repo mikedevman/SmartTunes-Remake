@@ -1,18 +1,18 @@
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Music2, Twitter, Instagram, Github } from 'lucide-react';
+import { Music2, Facebook, Instagram, Github } from 'lucide-react';
 
 const FOOTER_LINKS = {
-  Company: ['About', 'Jobs', 'For the Record', 'Press'],
+  Company: ['About', 'Jobs', 'Press'],
   Communities: ['For Artists', 'Developers', 'Advertising', 'Investors'],
-  'Useful Links': ['Support', 'Web Player', 'Free Mobile App', 'Accessibility'],
+  'Useful Links': ['Support', 'Mobile App', 'AI Policy'],
 };
 
 const SOCIAL_LINKS = [
   {
-    label: 'Twitter',
+    label: 'Facebook',
     href: '#',
-    icon: Twitter,
+    icon: Facebook,
   },
   {
     label: 'Instagram',
@@ -88,7 +88,7 @@ export const Footer = () => {
         {/* Divider */}
         <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-xs text-textMuted">
-            © 2025 SmartTunes. All rights reserved.
+            © 2026 SmartTunes. All rights reserved.
           </p>
           <div className="flex gap-6 text-xs text-textMuted">
             {['Legal', 'Privacy Policy', 'Cookies', 'Terms of Service'].map((item) => (

@@ -229,7 +229,8 @@ export function PlayerProvider({ children }) {
     const duration = durationRef.current || 0;
     const targetSeconds = (clamped / 100) * duration;
     
-    if (audioRef.current.src) {
+    // Fix: check getAttribute('src') because audio.src resolves to the base URL (truthy) even when empty
+    if (audioRef.current.getAttribute('src')) {
       audioRef.current.currentTime = targetSeconds;
     } else {
       offsetRef.current = targetSeconds;

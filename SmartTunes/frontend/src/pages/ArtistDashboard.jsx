@@ -8,7 +8,7 @@ import {
 import { Navbar } from '../components/Navbar';
 import { useArtist } from '../components/ArtistContext';
 import { usePlayer } from '../components/PlayerContext';
-import { formatDuration } from '../utils/itunesApi';
+import { formatDuration } from '../mock/mockData';
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 

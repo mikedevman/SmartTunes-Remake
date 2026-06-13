@@ -2,10 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import * as Tone from 'tone';
 
-/** Local MusicXML/MXL under `frontend/public/scores/` (served at `/scores/...`). */
+/** Local MusicXML/MXL under `frontend/public/mockScores/` (served at `/mockScores/...`). */
 export function localScorePath(fileName) {
   const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
-  return `${base}/test/scores/${fileName}`;
+  return `${base}/mockScores/${fileName}`;
 }
 
 /** Fetch score file first so missing files show a clear message (OSMD otherwise reports "Could not retrieve requested URL 0"). */
@@ -50,6 +50,7 @@ export function SheetMusicViewer({
   isPlaying,
   progress,
   onReady,
+  onTimelineParsed,
   onCursorRenderingChange,
   onForceReset,
 }) {
@@ -95,38 +96,69 @@ export function SheetMusicViewer({
    * and push it into React state so our custom overlay div follows.
    */
   const syncCursorPos = useCallback(() => {
-    const el = osmdRef.current?.cursor?.cursorElement;
+    const osmd = osmdRef.current;
+    const el = osmd?.cursor?.cursorElement;
     if (!el) return;
 
     const left = el.style.left;
     const top  = el.style.top;
 
-    // OSMD sets el.style.height (inline CSS) on its cursor <img>.
-    // el.height (the HTML attribute) is almost always 0 — never read it first.
-    // Priority: inline style → SVG baseVal → layout APIs
-    let rawHeight = null;
-    if (el.style?.height) {
-      rawHeight = parseFloat(el.style.height);        // OSMD always sets this
-    } else if (el.height && typeof el.height === 'object' && el.height.baseVal) {
-      rawHeight = el.height.baseVal.value;             // SVG <image> fallback
+    let finalHeight = 125; // fallback
+    let customTop = top; // fallback to OSMD's top
+
+    try {
+      if (osmd.cursor && osmd.cursor.iterator) {
+        const currentMeasureIndex = osmd.cursor.iterator.CurrentMeasureIndex;
+        const graphicSheet = osmd.GraphicSheet || osmd.graphic;
+        const measureList = graphicSheet?.MeasureList || graphicSheet?.measureList;
+
+        if (measureList && measureList.length > currentMeasureIndex) {
+          const stavesInMeasure = measureList[currentMeasureIndex];
+          
+          if (stavesInMeasure && stavesInMeasure.length > 0) {
+            // stavesInMeasure is an array of staves for this specific measure.
+            // [0] is the top staff (e.g. Treble), [length - 1] is the bottom staff (e.g. Bass)
+            const topStaffMeasure = stavesInMeasure[0];
+            const bottomStaffMeasure = stavesInMeasure[stavesInMeasure.length - 1];
+
+            if (topStaffMeasure && bottomStaffMeasure) {
+              const topStaffLine = topStaffMeasure.ParentStaffLine || topStaffMeasure.parentStaffLine;
+              const bottomStaffLine = bottomStaffMeasure.ParentStaffLine || bottomStaffMeasure.parentStaffLine;
+
+              if (topStaffLine && bottomStaffLine) {
+                const topPos = topStaffLine.PositionAndShape || topStaffLine.positionAndShape;
+                const bottomPos = bottomStaffLine.PositionAndShape || bottomStaffLine.positionAndShape;
+
+                const topY = topPos?.AbsolutePosition?.y ?? topPos?.absolutePosition?.y;
+                const bottomYRaw = bottomPos?.AbsolutePosition?.y ?? bottomPos?.absolutePosition?.y;
+
+                if (topY !== undefined && bottomYRaw !== undefined) {
+                  const bottomY = bottomYRaw + 4;
+                  const heightInUnits = bottomY - topY;
+                  const zoom = osmd.zoom || osmd.Zoom || 1;
+                  // 1 unit = 10 pixels in OSMD
+                  finalHeight = heightInUnits * 10 * zoom;
+                  
+                  // We also optionally fix the 'top' to align perfectly with the top staff line
+                  customTop = (topY * 10 * zoom) + "px";
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Could not calculate dynamic measure height, using fallback", err);
     }
-    // el.height (HTML img attribute) intentionally skipped — it is always 0
 
-    const rectHeight   = Math.round(el.getBoundingClientRect().height);
-    const offsetHeight = el.offsetHeight;
+    console.log(`OSMD Cursor Height: ${el.style.height || 'N/A'} | Calculated Staff Height: ${finalHeight}px`);
 
-    const measured = (typeof rawHeight === 'number' && !isNaN(rawHeight) && rawHeight > 0)
-      ? rawHeight
-      : (offsetHeight || rectHeight || 0);
-
-    // OSMD's cursor <img> drops to 1×1 px on certain beats — ignore bogus heights
-    // and fall back to the last known-good staff height.
-    if (measured > 10) cursorHeightRef.current = measured;
-
-    const finalHeight = measured > 10 ? measured : (cursorHeightRef.current || 0);
-
-    if (left && top && finalHeight > 0) {
-      setCursorPos({ left, top, height: finalHeight + 'px' });
+    if (left && customTop) {
+      setCursorPos(prev => {
+        const newHeight = finalHeight + 'px';
+        if (prev && prev.left === left && prev.top === customTop && prev.height === newHeight) return prev;
+        return { left, top: customTop, height: newHeight };
+      });
     }
   }, []);
 
@@ -215,7 +247,7 @@ export function SheetMusicViewer({
           osmd.cursor.show();
 
           // ✨ BUILD TIMELINE & TONE.JS SETUP ✨ //
-          const bpm = osmd.Sheet?.DefaultStartTempoInBpm || osmd.sheet?.DefaultStartTempoInBpm || 30;
+          const bpm = osmd.Sheet?.DefaultStartTempoInBpm || osmd.sheet?.DefaultStartTempoInBpm || 120;
           const secondsPerQuarterNote = 60 / Math.max(bpm, 1);
 
           if (!synthRef.current) {
@@ -224,6 +256,7 @@ export function SheetMusicViewer({
           const synth = synthRef.current;
 
           Tone.Transport.bpm.value = bpm;
+          Tone.Transport.stop(); // FIX: Reset timeline time to 0, otherwise it resumes from the previous song's position!
           Tone.Transport.cancel(); // clear any previous score schedules
 
           const timeline = [];
@@ -290,23 +323,18 @@ export function SheetMusicViewer({
             Tone.Transport.schedule((t) => {
               if (notes.length > 0) {
                 synth.triggerAttackRelease(notes, durationSeconds, t);
-
-                // Sync UI exactly to audio timing context using Tone.Draw
-                Tone.Draw.schedule(() => {
-                  const innerOsmd = osmdRef.current;
-                  if (!innerOsmd) {
-                    console.warn('[CURSOR] Tone.Draw fired but osmdRef is null — skipping cursor.next()');
-                    return;
-                  }
-                  console.log('[CURSOR] 🎵 Tone.Draw fired — calling cursor.next() | notes:', notes);
-                  innerOsmd.cursor.next();
-                  syncCursorPos();
-                  scrollToCursor();
-                }, t);
-              } else {
-                // REST beat — cursor.next() is NOT called here (known limitation)
-                console.log('[CURSOR] 🔇 REST beat at t=', timeSeconds.toFixed(3), '— cursor.next() SKIPPED');
               }
+
+              // Always sync UI exactly to audio timing context using Tone.Draw, EVEN on rests.
+              // If we skip rests, the visual cursor permanently falls behind the audio!
+              Tone.Draw.schedule(() => {
+                const innerOsmd = osmdRef.current;
+                if (!innerOsmd) return;
+                
+                innerOsmd.cursor.next();
+                syncCursorPos();
+                scrollToCursor();
+              }, t);
             }, timeSeconds);
 
             iterator.moveToNext();
@@ -314,6 +342,10 @@ export function SheetMusicViewer({
 
           timelineRef.current = timeline;
           const totalDurationSecs = currentTime;
+          
+          if (onTimelineParsed) {
+            onTimelineParsed(timeline);
+          }
 
           // Restore cursor to original state now that timeline is mapped
           osmd.cursor.reset();
@@ -332,6 +364,13 @@ export function SheetMusicViewer({
           syncCursorPos();
           setStatus('');
           onReadyRef.current?.(totalDurationSecs);
+
+          // FIX: If the user impatiently clicked "Play" on the global player while the 
+          // sheet was still loading, the `isPlaying` state became `true` too early.
+          // Force Tone.js to start now so it doesn't get stuck in a locked state!
+          if (isPlayingRef.current) {
+            Tone.start().then(() => Tone.Transport.start());
+          }
         });
       })
       .catch((e) => {
@@ -437,8 +476,8 @@ export function SheetMusicViewer({
     if (isRendering) return;
 
     const timer = setTimeout(() => {
-      console.warn('[TIMEOUT] Cursor failed to render within 5 seconds. Reloading page...');
-      window.location.reload();
+      console.warn('[TIMEOUT] Cursor failed to render within 5 seconds. Auto-reload is currently disabled for debugging.');
+      // window.location.reload(); // DISABLED FOR DEBUGGING
     }, 5000);
 
     return () => clearTimeout(timer);
@@ -471,15 +510,20 @@ export function SheetMusicViewer({
   // ── Seek detection ────────────────────────────────────────────────────────
   useEffect(() => {
     const prev = prevProgressRef.current;
-    const diff = Math.abs(progress - prev);
+    
+    // We calculate the maximum expected increment from a native 250ms interval tick.
+    const totalDurationSecs = timelineRef.current.length > 0
+      ? timelineRef.current[timelineRef.current.length - 1].time
+      : 60;
+    
+    const expectedMaxTick = (0.3 / totalDurationSecs) * 100 + 1.0; 
+    
+    // A seek occurs if progress jumps backwards, or jumps forward more than a native tick
+    const wasSeeked = progress < prev - 0.1 || (progress - prev) > expectedMaxTick;
+    
     prevProgressRef.current = progress;
 
-    const wasSeeked = diff > 5;
     if (wasSeeked && renderedRef.current) {
-      const totalDurationSecs = timelineRef.current.length > 0
-        ? timelineRef.current[timelineRef.current.length - 1].time
-        : null;
-
       const targetSecs = (progress / 100) * totalDurationSecs;
 
       Tone.Transport.seconds = targetSecs;

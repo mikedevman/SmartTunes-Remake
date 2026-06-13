@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Music2, Mic2, LayoutDashboard, Upload } from 'lucide-react';
 import { useArtist } from './ArtistContext';
+import { Avatar } from './Avatar';
 
 const NAV_LINKS = [
   { label: 'Home',     to: '/home'     },
   { label: 'Discover', to: '/discover' },
   { label: 'Social',   to: '/social'   },
-  { label: 'Scores',   to: '/scores'   },
+  { label: 'Scores',   to: '/mockScores'   },
+  { label: 'Arcade',   to: '/games'    },
 ];
 
 /**
@@ -97,17 +99,11 @@ export const Navbar = () => {
                     <div className="relative">
                       <button
                         onClick={() => setAvatarMenu((v) => !v)}
-                        className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-primary/30 bg-primary/10 hover:bg-primary/20 transition-all"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
                         aria-label="Artist menu"
                       >
-                        {artist?.avatar ? (
-                          <img src={artist.avatar} alt="avatar" className="w-7 h-7 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                            <span className="text-xs font-black text-white">{artist?.stageName?.[0]?.toUpperCase()}</span>
-                          </div>
-                        )}
-                        <span className="text-sm font-bold text-primary">{artist?.stageName}</span>
+                        <Avatar src={artist?.avatar} name={artist?.stageName} className="w-7 h-7 rounded-full object-cover" alt="avatar" />
+                        <span className="text-sm font-bold max-w-[100px] truncate">{artist?.stageName}</span>
                       </button>
 
                       {avatarMenu && (

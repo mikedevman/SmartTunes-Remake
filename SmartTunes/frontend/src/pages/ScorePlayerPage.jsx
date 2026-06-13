@@ -1,19 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useParams, useNavigate, Link as RouterLink, useLocation } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Text } from '../components/Text';
 import { X, ArrowLeft, Download } from 'lucide-react';
 import { usePlayer } from '../components/PlayerContext';
 import { SheetMusicViewer } from '../components/SheetMusicViewer';
-import { SHEETS } from './ScoresPage';
+import { SHEETS } from '../mock/mockData';
 
 export const ScorePlayerPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentTrack, isPlaying, progress, play } = usePlayer();
 
+  const customSheet = location.state?.customSheet;
   const sheetId = parseInt(id, 10);
-  const sheet = SHEETS.find((s) => s.id === sheetId);
+  const sheet = customSheet || SHEETS.find((s) => s.id === sheetId);
 
   const [isCursorRendering, setIsCursorRendering] = useState(false);
   const sheetReadyRef = useRef(null);
@@ -77,7 +79,7 @@ export const ScorePlayerPage = () => {
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => navigate('/scores')}
+                onClick={() => navigate('/mockScores')}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center text-textMuted hover:text-white"
                 title="Back to Scores Library"
               >
@@ -99,7 +101,7 @@ export const ScorePlayerPage = () => {
                 <span className="hidden sm:inline">Download</span>
               </a>
               <button
-                onClick={() => navigate('/scores')}
+                onClick={() => navigate('/mockScores')}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center text-textMuted hover:text-white"
                 title="Close"
               >
