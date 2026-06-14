@@ -11,7 +11,7 @@ export const ScorePlayerPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentTrack, isPlaying, progress, play } = usePlayer();
+  const { currentTrack, isPlaying, progress, play, speed } = usePlayer();
 
   const customSheet = location.state?.customSheet;
   const sheetId = parseInt(id, 10);
@@ -120,6 +120,7 @@ export const ScorePlayerPage = () => {
               scoreUrl={sheet.scoreUrl}
               isPlaying={isPlaying && currentTrack?.id === sheet.id}
               progress={currentTrack?.id === sheet.id ? progress : 0}
+              speed={speed}
               onReady={(durationSeconds) => sheetReadyRef.current?.(durationSeconds)}
               onCursorRenderingChange={setIsCursorRendering}
             />

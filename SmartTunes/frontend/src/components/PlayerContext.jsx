@@ -10,6 +10,7 @@ export function PlayerProvider({ children }) {
   const [isPlaying, setIsPlaying]       = useState(false);
   const [progress, setProgress]         = useState(0);    // 0 – 100
   const [volume, setVolume]             = useState(0.75); // 0 – 1
+  const [speed, setSpeed]               = useState(1);    // 0.5 - 2
   const [isMuted, setIsMuted]           = useState(false);
   const [queue, setQueue]               = useState([]);   // array of tracks
   const [queueIndex, setQueueIndex]     = useState(0);
@@ -18,9 +19,11 @@ export function PlayerProvider({ children }) {
   
   const isShuffleRef = useRef(false);
   const isRepeatRef = useRef(false);
+  const speedRef = useRef(1);
 
   useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
   useEffect(() => { isRepeatRef.current = isRepeat; }, [isRepeat]);
+  useEffect(() => { speedRef.current = speed; }, [speed]);
   
   const pendingPlayRef   = useRef(null);
   const playRequestIdRef = useRef(0);
@@ -36,6 +39,11 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     audioRef.current.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
+
+  // Set audio speed when it changes
+  useEffect(() => {
+    audioRef.current.playbackRate = speed;
+  }, [speed]);
 
   // Handle play/pause of HTML audio when global isPlaying changes
   useEffect(() => {
@@ -115,10 +123,14 @@ export function PlayerProvider({ children }) {
       } 
       // Otherwise use simulated ticker (for sheet music without backing tracks)
       else if (!hasSrc) {
-        const sessionElapsed = (Date.now() - startTimeRef.current) / 1000; // seconds
-        const totalElapsed = offsetRef.current + sessionElapsed;
+        const now = Date.now();
+        const delta = (now - startTimeRef.current) / 1000;
+        startTimeRef.current = now; // step forward
+        
+        offsetRef.current += delta * speedRef.current; // scale by current speed
+        
         const duration = Math.max(durationRef.current || 1, 1);
-        const newProgress = Math.min((totalElapsed / duration) * 100, 100);
+        const newProgress = Math.min((offsetRef.current / duration) * 100, 100);
         setProgress(newProgress);
         
         if (newProgress >= 100) {
@@ -135,8 +147,12 @@ export function PlayerProvider({ children }) {
     if (intervalRef.current === null) { return; } // already stopped
     clearInterval(intervalRef.current);
     intervalRef.current = null;
+    
+    // For simulated ticker, offsetRef already accumulated the precise time during intervals
+    // so we just clear the interval and don't need to add a giant chunk here.
     if (!audioRef.current.getAttribute('src')) {
-      offsetRef.current += (Date.now() - startTimeRef.current) / 1000; // accumulate elapsed time
+      const delta = (Date.now() - startTimeRef.current) / 1000;
+      offsetRef.current += delta * speedRef.current;
     }
   }, []);
 
@@ -163,6 +179,7 @@ export function PlayerProvider({ children }) {
       setQueueIndex(0);
     }
 
+    setSpeed(1); // Reset speed to 1x when playing a new track
     setCurrentTrack(track);
     setProgress(0);
     setIsPlaying(false);
@@ -245,6 +262,10 @@ export function PlayerProvider({ children }) {
     if (value > 0) setIsMuted(false);
   }, []);
 
+  const changeSpeed = useCallback((value) => {
+    setSpeed(value);
+  }, []);
+
   const toggleMute = useCallback(() => setIsMuted(m => !m), []);
 
   /** Play an ordered list of tracks like a radio queue */
@@ -321,6 +342,7 @@ export function PlayerProvider({ children }) {
     isPlaying,
     progress,
     volume,
+    speed,
     isMuted,
     queue,
     queueIndex,
@@ -335,6 +357,7 @@ export function PlayerProvider({ children }) {
     toggleRepeat,
     seek,
     changeVolume,
+    changeSpeed,
     toggleMute,
     close,
   };

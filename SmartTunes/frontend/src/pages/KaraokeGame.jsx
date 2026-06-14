@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { PitchDetector } from '../utils/PitchDetector';
 import { LeaderboardStore } from '../mock/mockData';
@@ -9,7 +9,13 @@ import { X, Mic } from 'lucide-react';
 export const KaraokeGame = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  
+  const isLocal = id === 'local';
   const track = KARAOKE_TRACKS.find(t => t.id === id);
+  
+  const title = isLocal ? state?.title || 'Local Karaoke' : state?.title || track?.title || 'Unknown Track';
+  const artist = isLocal ? 'Local File' : state?.artist || track?.artist || 'Unknown Artist';
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [score, setScore] = useState(0);
@@ -36,6 +42,8 @@ export const KaraokeGame = () => {
 
   // Initialize YouTube Player
   useEffect(() => {
+    if (isLocal) return;
+
     if (!window.YT) {
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
@@ -69,6 +77,22 @@ export const KaraokeGame = () => {
       }
     };
   }, [id]);
+
+  const handleLocalVideoPlay = async () => {
+    try {
+      await pitchDetectorRef.current.start();
+      setIsPlaying(true);
+      startVisualizer();
+    } catch (err) {
+      alert("Please allow microphone access to play Karaoke mode!");
+    }
+  };
+
+  const handleLocalVideoEnded = () => {
+    setIsPlaying(false);
+    setGameOver(true);
+    LeaderboardStore.saveScore('karaoke', 'local', scoreRef.current, 'GuestSinger');
+  };
 
   const onPlayerStateChange = async (event) => {
     // PLAYING = 1, ENDED = 0, PAUSED = 2
@@ -143,22 +167,25 @@ export const KaraokeGame = () => {
     draw();
   };
 
-  if (!track) return null;
+  if (!isLocal && !state?.title && !track) return null;
+  if (isLocal && !state?.videoUrl) {
+    return <div className="bg-black text-white min-h-screen flex items-center justify-center">No video provided</div>;
+  }
 
   return (
     <div className="bg-black text-white font-sans min-h-screen flex flex-col">
-      <header className="absolute top-0 w-full z-50 p-6 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex items-center gap-4">
+      <header className="absolute top-0 w-full z-50 p-6 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+        <div className="flex items-center gap-4 pointer-events-auto">
           <div className="bg-primary/20 p-3 rounded-full">
             <Mic className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="font-display font-bold text-2xl">{track.title}</h1>
-            <p className="text-textMuted text-sm">{track.artist}</p>
+            <h1 className="font-display font-bold text-2xl">{title}</h1>
+            <p className="text-textMuted text-sm">{artist}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-8 pointer-events-auto">
           <div className="text-center">
             <p className="text-xs text-textMuted uppercase tracking-wider font-bold mb-1">Score</p>
             <p className="font-display font-extrabold text-4xl text-primary drop-shadow-[0_0_15px_rgba(29,185,84,0.5)]">
@@ -178,7 +205,18 @@ export const KaraokeGame = () => {
         
         {/* YouTube Video Container */}
         <div className="relative w-full max-w-5xl aspect-video bg-black/50 rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_-12px_rgba(255,255,255,0.1)]">
-          <div id="yt-player" className="absolute inset-0 pointer-events-auto"></div>
+          {isLocal ? (
+            <video 
+              src={state.videoUrl} 
+              controls 
+              className="absolute inset-0 w-full h-full object-cover pointer-events-auto"
+              onPlay={handleLocalVideoPlay}
+              onPause={() => setIsPlaying(false)}
+              onEnded={handleLocalVideoEnded}
+            />
+          ) : (
+            <div id="yt-player" className="absolute inset-0 pointer-events-auto"></div>
+          )}
           
           {/* Pitch Visualization Overlay */}
           <div className="absolute bottom-0 left-0 w-full h-1/3 pointer-events-none bg-gradient-to-t from-black/80 to-transparent flex items-end">

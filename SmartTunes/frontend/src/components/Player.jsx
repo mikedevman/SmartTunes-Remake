@@ -29,6 +29,7 @@ export function PlayerControlBar({
   isPlaying,
   progress,
   volume,
+  speed = 1,
   isMuted,
   isShuffle,
   isRepeat,
@@ -40,10 +41,20 @@ export function PlayerControlBar({
   onQueueToggle,
   onSeek,
   onVolumeChange,
+  onChangeSpeed,
   onMuteToggle,
   onClose,
 }) {
   const [isLiked, setIsLiked] = React.useState(false);
+
+  const speedOptions = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  const handleSpeedClick = () => {
+    if (!onChangeSpeed) return;
+    const currentIndex = speedOptions.indexOf(speed);
+    const nextIndex = (currentIndex + 1) % speedOptions.length;
+    onChangeSpeed(speedOptions[nextIndex]);
+  };
+
   if (!track) return null;
 
   const trackTitle = track.title || track.trackName || 'Unknown Title';
@@ -192,7 +203,7 @@ export function PlayerControlBar({
             onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.transform = 'scale(1)'; }}
           >
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM16 6h2v12h-2z" />
+              <path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z" />
             </svg>
           </button>
 
@@ -253,6 +264,20 @@ export function PlayerControlBar({
 
       {/* ── Right Controls ── */}
       <div style={{ flex: '0 0 220px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+        
+        {/* Speed toggle (only for sheet music) */}
+        {track.scoreUrl && (
+          <button
+            onClick={handleSpeedClick}
+            title="Playback speed"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: speed !== 1 ? '#a78bfa' : 'rgba(255,255,255,0.6)', padding: '4px', fontSize: '13px', fontWeight: 'bold', transition: 'color 0.15s', minWidth: '36px' }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
+            onMouseLeave={e => (e.currentTarget.style.color = speed !== 1 ? '#a78bfa' : 'rgba(255,255,255,0.6)')}
+          >
+            {speed}x
+          </button>
+        )}
+
         {/* Queue */}
         <button
           onClick={onQueueToggle}

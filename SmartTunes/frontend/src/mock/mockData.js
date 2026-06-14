@@ -1122,7 +1122,7 @@ export const ARTIST_SPOTLIGHT = {
 // ─── Sheet Music Data ──────────────────────────────────────────────────────
 
 export const SHEETS = [
-  { id: 1, title: 'Mariage d\'Amoure', composer: 'Paul de Senneville', image: 'https://loremflickr.com/400/500/piano,classical?lock=1', scoreUrl: localScorePath('mariage-damour.mxl'), diff: 'Intermediate', uploadedBy: '@classicvibes' },
+  { id: 1, title: 'Mariage d\'Amoure', composer: 'Paul de Senneville ', image: 'https://loremflickr.com/400/500/piano,classical?lock=1', scoreUrl: localScorePath('mariage-damour.mxl'), diff: 'Intermediate', uploadedBy: '@classicvibes' },
   { id: 2, title: 'Für Elise in A Minor', composer: 'Ludwig van Beethoven', image: 'https://loremflickr.com/400/500/piano,classical?lock=51', scoreUrl: localScorePath('fr-elise--beethoven.mxl'), diff: 'Beginner', uploadedBy: '@pianomaster' },
   { id: 3, title: 'Für Elise', composer: 'Ludwig van Beethoven', image: 'https://loremflickr.com/400/500/piano,classical?lock=55', scoreUrl: localScorePath('c-major.mxl'), diff: 'Beginner', uploadedBy: '@sheetmusicnerd' },
   { id: 4, title: 'Carmen Prelude', composer: 'Georges Bizet', image: 'https://loremflickr.com/400/500/piano,classical?lock=4', scoreUrl: localScorePath('c-minor.mxl'), diff: 'Advanced', uploadedBy: '@virtuoso22' },

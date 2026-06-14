@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import './styles/globals.css';
 import { IndexPage } from './pages/IndexPage';
@@ -21,47 +21,90 @@ import { KaraokeSelection } from './pages/KaraokeSelection';
 import { KaraokeGame } from './pages/KaraokeGame';
 import { PlayAlongSelection } from './pages/PlayAlongSelection';
 import { PlayAlongGame } from './pages/PlayAlongGame';
+import { SHEETS } from './mock/mockData';
 
 /** Reads from the global player context and renders the persistent bar. */
 function GlobalPlayer() {
-  const {
-    currentTrack,
-    isPlaying,
-    progress,
-    volume,
-    isMuted,
-    isShuffle,
-    isRepeat,
-    togglePlayPause,
-    next,
-    prev,
-    toggleShuffle,
-    toggleRepeat,
-    seek,
-    changeVolume,
-    toggleMute,
-    close,
-  } = usePlayer();
+  const player = usePlayer();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [hasEnded, setHasEnded] = React.useState(false);
+
+  const handleNext = React.useCallback(() => {
+    if (location.pathname.startsWith('/mockScores/') && location.pathname !== '/mockScores/custom') {
+      const currentId = parseInt(location.pathname.split('/').pop(), 10);
+      const sheetIndex = SHEETS.findIndex(s => s.id === currentId);
+      if (sheetIndex !== -1) {
+        const nextIndex = player.isShuffle 
+          ? Math.floor(Math.random() * SHEETS.length)
+          : (sheetIndex + 1) % SHEETS.length;
+        navigate(`/mockScores/${SHEETS[nextIndex].id}`);
+      }
+    } else {
+      player.next();
+    }
+  }, [location.pathname, navigate, player.isShuffle, player.next]);
+
+  const handlePrev = React.useCallback(() => {
+    if (location.pathname.startsWith('/mockScores/') && location.pathname !== '/mockScores/custom') {
+      const currentId = parseInt(location.pathname.split('/').pop(), 10);
+      const sheetIndex = SHEETS.findIndex(s => s.id === currentId);
+      if (sheetIndex !== -1) {
+        const prevIndex = (sheetIndex - 1 + SHEETS.length) % SHEETS.length;
+        navigate(`/mockScores/${SHEETS[prevIndex].id}`);
+      }
+    } else {
+      player.prev();
+    }
+  }, [location.pathname, navigate, player.prev]);
+
+  React.useEffect(() => {
+    // Detect when a sheet music track finishes playing
+    if (player.progress >= 100 && !player.isPlaying) {
+      if (!hasEnded) {
+        setHasEnded(true);
+
+        if (location.pathname.startsWith('/mockScores/') && location.pathname !== '/mockScores/custom') {
+          if (player.isRepeat) {
+            // Repeat the current score
+            player.seek(0);
+            setTimeout(() => {
+              // We safely toggle Play if it didn't play already
+              player.togglePlayPause();
+            }, 100);
+          } else {
+            // Auto-advance to the next score (honoring shuffle)
+            handleNext();
+          }
+        }
+      }
+    } else if (player.progress < 100) {
+      setHasEnded(false);
+    }
+  }, [player.progress, player.isPlaying, player.isRepeat, location.pathname, hasEnded, handleNext, player]);
 
   return (
     <PlayerControlBar
-      track={currentTrack}
-      isPlaying={isPlaying}
-      progress={progress}
-      volume={volume}
-      isMuted={isMuted}
-      isShuffle={isShuffle}
-      isRepeat={isRepeat}
-      onPlayPause={togglePlayPause}
-      onNext={next}
-      onPrev={prev}
-      onShuffleToggle={toggleShuffle}
-      onRepeatToggle={toggleRepeat}
+      track={player.currentTrack}
+      isPlaying={player.isPlaying}
+      progress={player.progress}
+      volume={player.volume}
+      speed={player.speed}
+      isMuted={player.isMuted}
+      isShuffle={player.isShuffle}
+      isRepeat={player.isRepeat}
+      onPlayPause={player.togglePlayPause}
+      onNext={handleNext}
+      onPrev={handlePrev}
+      onShuffleToggle={player.toggleShuffle}
+      onRepeatToggle={player.toggleRepeat}
       onQueueToggle={() => {}}
-      onSeek={seek}
-      onVolumeChange={changeVolume}
-      onMuteToggle={toggleMute}
-      onClose={close}
+      onSeek={player.seek}
+      onVolumeChange={player.changeVolume}
+      onChangeSpeed={player.changeSpeed}
+      onMuteToggle={player.toggleMute}
+      onClose={player.close}
     />
   );
 }

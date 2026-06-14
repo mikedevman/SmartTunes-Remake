@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import * as Tone from 'tone';
+import { usePlayer } from './PlayerContext';
 
 /** Local MusicXML/MXL under `frontend/public/mockScores/` (served at `/mockScores/...`). */
 export function localScorePath(fileName) {
@@ -49,6 +50,7 @@ export function SheetMusicViewer({
   scoreUrl,
   isPlaying,
   progress,
+  speed = 1,
   onReady,
   onTimelineParsed,
   onCursorRenderingChange,
@@ -59,7 +61,20 @@ export function SheetMusicViewer({
   const renderedRef = useRef(false); // true once osmd.render() completed
   const cursorHeightRef = useRef(null); // last known-good cursor height in px
   const prevProgressRef = useRef(0);     // for seek detection
+  const { volume, isMuted } = usePlayer();
   const isPlayingRef = useRef(isPlaying); // always-current mirror for async closures
+  const speedRef = useRef(speed);
+
+  // ── React to volume & mute change ─────────────────────────────────────────
+  useEffect(() => {
+    if (isMuted || volume <= 0) {
+      Tone.Destination.mute = true;
+    } else {
+      Tone.Destination.mute = false;
+      // Convert linear volume (0-1) to decibels
+      Tone.Destination.volume.value = 20 * Math.log10(Math.max(volume, 0.0001));
+    }
+  }, [volume, isMuted]);
 
   // Timeline & scheduler state
   const timelineRef = useRef([]);        // Array of { ms: number, time: number, duration: number, notes: string[] }
@@ -83,6 +98,7 @@ export function SheetMusicViewer({
 
   // Sync every render — safe to do outside useEffect for a ref
   isPlayingRef.current = isPlaying;
+  speedRef.current = speed;
 
   const [status, setStatus] = useState('Loading score…');
   const [error, setError] = useState(null);
@@ -255,7 +271,7 @@ export function SheetMusicViewer({
           }
           const synth = synthRef.current;
 
-          Tone.Transport.bpm.value = bpm;
+          Tone.Transport.bpm.value = bpm * speedRef.current;
           Tone.Transport.stop(); // FIX: Reset timeline time to 0, otherwise it resumes from the previous song's position!
           Tone.Transport.cancel(); // clear any previous score schedules
 
@@ -322,7 +338,7 @@ export function SheetMusicViewer({
             // Schedule this event into Tone.js directly using Tone.Transport timeline
             Tone.Transport.schedule((t) => {
               if (notes.length > 0) {
-                synth.triggerAttackRelease(notes, durationSeconds, t);
+                synth.triggerAttackRelease(notes, durationSeconds / speedRef.current, t);
               }
 
               // Always sync UI exactly to audio timing context using Tone.Draw, EVEN on rests.
@@ -506,6 +522,16 @@ export function SheetMusicViewer({
 
     updatePlayback();
   }, [isPlaying]);
+
+  // ── React to speed change ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!renderedRef.current) return;
+    const osmd = osmdRef.current;
+    if (osmd) {
+      const bpm = osmd.Sheet?.DefaultStartTempoInBpm || osmd.sheet?.DefaultStartTempoInBpm || 120;
+      Tone.Transport.bpm.value = bpm * speed;
+    }
+  }, [speed]);
 
   // ── Seek detection ────────────────────────────────────────────────────────
   useEffect(() => {

@@ -2,10 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SheetMusicViewer } from '../components/SheetMusicViewer';
 import { SHEETS } from '../mock/mockData';
-import { PitchDetector } from '../utils/PitchDetector';
 import { MidiDetector } from '../utils/MidiDetector';
 import { LeaderboardStore } from '../mock/mockData';
-import { X, Music, Keyboard, Mic } from 'lucide-react';
+import { X, Music, Keyboard, Cable } from 'lucide-react';
 import * as Tone from 'tone';
 
 export const PlayAlongGame = () => {
@@ -16,10 +15,10 @@ export const PlayAlongGame = () => {
   const [score, setScore] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  const [activeInput, setActiveInput] = useState('none'); // 'midi' or 'mic'
+  const [activeInput, setActiveInput] = useState('none'); // 'midi' or 'soundcard'
   const [feedback, setFeedback] = useState('');
+  const [speed, setSpeed] = useState(1);
 
-  const pitchDetectorRef = useRef(null);
   const midiDetectorRef = useRef(null);
   const timelineRef = useRef([]);
   const requestRef = useRef();
@@ -30,26 +29,20 @@ export const PlayAlongGame = () => {
 
   // Initialize Input Detectors
   useEffect(() => {
-    pitchDetectorRef.current = new PitchDetector();
     midiDetectorRef.current = new MidiDetector(
       (note) => { currentNotePlayedRef.current = midiDetectorRef.current.noteToName(note); },
       (note) => { if (currentNotePlayedRef.current === midiDetectorRef.current.noteToName(note)) currentNotePlayedRef.current = null; }
     );
 
     return () => {
-      if (pitchDetectorRef.current) pitchDetectorRef.current.stop();
       if (midiDetectorRef.current) midiDetectorRef.current.stop();
       cancelAnimationFrame(requestRef.current);
     };
   }, []);
 
-  const startMic = async () => {
-    try {
-      await pitchDetectorRef.current.start();
-      setActiveInput('mic');
-    } catch (err) {
-      alert("Microphone access denied.");
-    }
+  const startSoundcard = () => {
+    setActiveInput('soundcard');
+    // Pitch detection via python backend will be implemented later
   };
 
   const startMidi = async () => {
@@ -92,9 +85,10 @@ export const PlayAlongGame = () => {
 
     // Determine current user input
     let playedNote = null;
-    if (activeInput === 'mic') {
-      const pitchData = pitchDetectorRef.current.getPitch();
-      if (pitchData && pitchData.note) playedNote = pitchData.noteName;
+    if (activeInput === 'soundcard') {
+      // Pitch recognition will be implemented using python later. 
+      // For now, no frontend pitch detection for soundcard.
+      playedNote = null; 
     } else if (activeInput === 'midi') {
       playedNote = currentNotePlayedRef.current;
     }
@@ -177,13 +171,29 @@ export const PlayAlongGame = () => {
                 <span className="font-bold">MIDI Keyboard</span>
               </button>
               <button 
-                onClick={startMic}
-                className={`flex-1 py-4 flex flex-col items-center gap-2 rounded-xl border ${activeInput === 'mic' ? 'border-blue-400 bg-blue-400/20 text-blue-400' : 'border-white/10 hover:bg-white/5'} transition-all`}
+                onClick={startSoundcard}
+                className={`flex-1 py-4 flex flex-col items-center gap-2 rounded-xl border ${activeInput === 'soundcard' ? 'border-blue-400 bg-blue-400/20 text-blue-400' : 'border-white/10 hover:bg-white/5'} transition-all`}
               >
-                <Mic className="w-8 h-8" />
-                <span className="font-bold">Microphone (Acoustic)</span>
+                <Cable className="w-8 h-8" />
+                <span className="font-bold">Audio Interface (Soundcard)</span>
               </button>
             </div>
+
+            <div className="mb-8 bg-white/5 rounded-xl p-4 border border-white/5">
+              <label className="block text-textMuted text-sm font-bold mb-3 uppercase tracking-wider">Speed Difficulty</label>
+              <div className="flex gap-2 justify-center">
+                {[0.5, 0.75, 1, 1.25, 1.5].map(s => (
+                  <button 
+                    key={s}
+                    onClick={() => setSpeed(s)}
+                    className={`flex-1 py-2 rounded-lg border font-bold ${speed === s ? 'bg-blue-400 text-black border-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.4)]' : 'border-white/10 text-white hover:bg-white/10'} transition-all`}
+                  >
+                    {s}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button 
               onClick={startGame}
               disabled={activeInput === 'none'}
@@ -199,6 +209,7 @@ export const PlayAlongGame = () => {
             scoreUrl={sheet.scoreUrl}
             isPlaying={isPlaying}
             progress={0} // We'll let Tone.Transport run naturally
+            speed={speed}
             onTimelineParsed={(timeline) => { timelineRef.current = timeline; }}
           />
         </div>
